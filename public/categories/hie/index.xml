@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>A Hugo website</title>
-    <link>/</link>
-    <description>Recent content on A Hugo website</description>
+    <title>HIE on A Hugo website</title>
+    <link>/categories/hie/</link>
+    <description>Recent content in HIE on A Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 22 Sep 2020 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/categories/hie/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -18,25 +18,6 @@
       
       <guid>/2020/09/22/ethics-of-the-health-information-exchange-in-the-era-of-data-science/</guid>
       <description>IntroductionHealth Information Exchanges (HIEs) allow for the transfer and storage of EHR data across institutions, with the primary use of improving patient care (Health IT 2020). The combination of multiple EHRs creates a wealth of data that can also be attractive for secondary uses such as research. Recent advances in machine learning and data science have enabled the analysis of HIE data in unanticipated ways.</description>
-    </item>
-    
-    <item>
-      <title>About</title>
-      <link>/about/</link>
-      <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/about/</guid>
-      <description>Hello, welcome to my blog! I talk about Data Science and all sorts of other things.</description>
-    </item>
-    
-    <item>
-      <title>Test Post</title>
-      <link>/2020/09/21/test-post/</link>
-      <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/21/test-post/</guid>
-      <description>This is a testYep. This is what it looks like. This line here is to test continuous integration.
-</description>
     </item>
     
   </channel>

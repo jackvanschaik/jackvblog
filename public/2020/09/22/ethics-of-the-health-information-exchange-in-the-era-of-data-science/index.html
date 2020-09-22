@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.74.3" />
+
+
+<title>Ethics of the Health Information Exchange in the Era of Data Science - A Hugo website</title>
+<meta property="og:title" content="Ethics of the Health Information Exchange in the Era of Data Science - A Hugo website">
+
+
+  <link href='/favicon.ico' rel='icon' type='image/x-icon'/>
+
+
+
+  
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/IMG_8052.jpg"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="/about/">About</a></li>
+    
+    <li><a href="https://github.com/jackvanschaik">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/VanschaikJack">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">28 min read</span>
+    
+
+    <h1 class="article-title">Ethics of the Health Information Exchange in the Era of Data Science</h1>
+
+    
+    <span class="article-date">2020-09-22</span>
+    
+
+    <div class="article-content">
+      
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/datatables-binding/datatables.js"></script>
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/dt-core/js/jquery.dataTables.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Health Information Exchanges (HIEs) allow for the transfer and storage of EHR data across institutions, with the primary use of improving patient care (Health IT 2020). The combination of multiple EHRs creates a wealth of data that can also be attractive for secondary uses such as research. Recent advances in machine learning and data science have enabled the analysis of HIE data in unanticipated ways. As is sometimes the case with new technology, the applications have shot past the ethics. In this article, I equip the researcher with a variety of questions to assess the ethics of their secondary HIE use.
+There are few articles that discuss the ethics of HIE use. In one such paper (Angst 2009), we are asked the “thought provoking” question:
+“How much privacy would one be willing to give up to save one life…ten lives…one thousand lives…one million lives? What about your own life or that of your children?”
+Perhaps this thought experiment could provide some ethical guidance if clinical research were a zero-sum game. The reality, especially in the era of data science, is not so linear. In addition to the privacy of “one”, what about the privacy of a community? What if the research that is claiming to save lives is doing more harm than good? With machine learning based computable phenotyping in the HIE, should patients be made aware that they fit certain inclusion criteria? Why have we continually taken patient consent for granted in HIE based retrospective cohort studies? Should patient consent be required for machine learning enabled mass data synthesis? Algorithms trained on biased data can further systemic inequalities, while HIEs can potentially compound the biases of several data streams. Is it ethical to use such biased data in any way?
+These questions tug on just a few interlocking threads that together weave the complex fabric of HIE ethics. My goal is not to write a comprehensive code of ethics or moral principles, but to ask the reader targeted questions so that they can begin to think critically about secondary HIE use within their own ethical framework. I organize these questions into four categories that reflect ongoing themes in HIE research: Patient Matching and Linkage, Demographic Data and Health Disparities, Phenotyping, and Deidentification and Data Synthesis.</p>
+</div>
+<div id="patient-matching-and-linkage" class="section level2">
+<h2>Patient Matching and Linkage</h2>
+<p>The widespread implementation of the Electronic Health Record (EHR) was a key point in the ongoing societal goal of improving health. In the backend, EHRs are databases that store two types of data: structured, and unstructured. Structured data refers to any medical record that can be stored in a table, for example lab values, demographics, and visit dates. Unstructured data is any non-tabular data such as doctor’s notes, radiology, etc. This comprises most data in EHRs (Kreimeyer et al 2017).<br />
+HIEs typically combine several EMR sources, thus necessitating some type of data harmonization. That is, the disparate data sources should be combined into a common format. Then, a given patient should be matched with all their records from the various source systems. This nontrivial task is called “patient matching” and is an ongoing field of study.</p>
+<p>Some countries, particularly those with universal health coverage, implement the use of a National Patient Identifier (NPI) (Mills et al 2019). The NPI is a unique code that allows for universal medical record linkage, and therefore trivializes patient matching. In the United States, the passing of the Health Insurance Portability and Accountability Act (HIPPA) in 1996 mandated a nationwide NPI. Efforts for NPI adoption were then stymied by the Health and Human Services Department in 1998. In June 2019, the house successfully voted to overturn the HHS and implement an NPI. This NPI is not yet implemented and continues to have opposition (Congress 2019). Until an NPI is in place, patient matching will remain necessary to the function of HIEs in the United States.</p>
+<p>Broadly, there are three types of patient matching: deterministic, probabilistic, and hybrid.</p>
+<p>Deterministic matching attempts to link records via exact values of one or more fields. For example, a deterministic match on name and date of birth would link patients with identical first and last names and birth days across different data sources. At first glance this seems promising, and in fact a study showed that almost 99% of records in a large US HIE were uniquely identifiable by name and date of birth alone (Zech et al 2016). However, issues in deterministic matching arise when data sources lack standardization (Grannis et al 2019). Names may be misspelled or capitalized differently, addresses may abbreviate street names differently, social security numbers may or may not be hyphenated, and so on.</p>
+<p>Probabilistic matching tries to remedy this by looking for similarities between fields and then assigning a score that quantifies the “probability” of a match between two records. Probabilistic matching has been used, with varying degrees of success, on HIE data (Zhu et al 2009). Ultimately, this method requires a threshold to be assigned; a cutoff score used to determine a match or no match. Probabilistic matching can be more accurate than deterministic methods at the risk of potentially losing interpretability.</p>
+<p>Finally, hybrid approaches involve some combination of both probabilistic and deterministic methodologies. Hybrid matching in some circumstances can perform better than either method alone. (Ong et al 2020).</p>
+<p>Patient matching may at first seem like a benign attempt to rectify the differences between several data sources but introduces several of potential ethical issues. Patients may not know their data is in an HIE, let alone being matched to other sources. Although patient matching algorithms can have accuracy in the high 90s, they are not perfect, and some mismatches are almost guaranteed. Implications of the use of mismatches is an important consideration for ethical research practice.</p>
+<p>A recent survey of over 3,500 participants indicated that most patients would be uncomfortable with their EHR data being confidentially shared for research if personal identifiers were included (O’Brien et al 2019). Patients are not always notified when their personal identifiers are used in EHR derived research data. Furthermore, most deterministic matching algorithms rely on personal identifiers. In such cases, a Data Analyst or Computer Scientists implements the matching algorithm and typically has unfettered access. If patients are not comfortable with a researcher viewing their identifiers, then why should they be comfortable with programmers and analysts? What if a patient is matched to external data not covered by HIPAA? Would it be ethical to match and not inform them?</p>
+<p>Then of course, is the issue of mismatches. Patient matching algorithms are imperfect and thus associated with a sensitivity, specificity, and accuracy. Algorithm validation is time consuming and seldom feasible for the large, heterogenous populations represented by HIE data. In common practice, there are no standards for acceptable performance metrics. If a certain HIE’s patient matching is 95% sensitive, does that constitute data acceptable for research? What about 99%? How about specificity or the F2 score? Is the matching error rate less important for some analyses, while critical for other? Should a patient or patient representative have a say in acceptable cutoff for probabilistic matching?</p>
+<p>Questions to consider:</p>
+<ul>
+<li>Does the HIE in question use patient matching? If so, is it deterministic, probabilistic, or hybrid?</li>
+<li>What are the implementation details of the matching algorithm? What fields are used, and are those fields standardized in any way?</li>
+<li>What is the performance of the matching algorithm? Has it been validated against a gold standard?</li>
+<li>Are the results of my study robust to matching discrepancies?</li>
+<li>If they given the decision, would the study population consent to their data being matched?</li>
+<li>Would patients prefer to have a say in the cutoffs for deterministic matching?</li>
+<li>What bias could be introduced by patient matching?</li>
+<li>Is it ethical to match patient data in an HIE to any external data?</li>
+<li>Should a match be done, just because it is possible?</li>
+</ul>
+</div>
+<div id="phenotyping" class="section level2">
+<h2>Phenotyping</h2>
+<p>In the context of EHRs and HIEs, Phenotyping (also referred to as computable phenotyping or electronic phenotyping) refers to selecting groups of patients that meet criteria of interest. This can prove to be a challenging task, as a clinically meaningful definition must be translated into whatever digital vocabularies the HIE is using. As institutions use a variety of EHR solutions and coding standards change over time (Panozzo et al 2018), phenotypes can be extremely institution dependent. This can make phenotyping within an HIE exponentially more difficult, as not only does a phenotype need to be defined, it needs to be harmonized across potentially dozens of sites. There are several types of phenotypes: rule-based, natural language processing (NLP) based and machine learning based. (Banda et al 2018). First however, a necessary digression about coding systems.
+Necessary to structured data are coding systems, or more formally biomedical ontologies. These collections of codes and names allow clinically meaningful concepts to be stored in databases. For example “Type 2 diabetes mellitus with diabetic chronic kidney disease” has an ICD-10 code of “E11.22”. Here are a few commonly using coding systems:</p>
+<div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4"],["ICD-10","CPT","LOINC","NDC"],["International Classification of Diseases 10th Edition","Current Procedural Terminology","Logical Observation Identifiers Names and Codes","National Drug Codes"],["Diagnoses and Procedures","Procedures","Labs and Observations","Drugs"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Coding.System<\/th>\n      <th>Full.Name<\/th>\n      <th>Primary.Usage<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>
+<p>There are many more coding systems. Some, like CPT, are proprietary. Many EHR vendors use their own, internally defined ontologies (Whittenburg 2019). It is very important to consider underlying coding systems when using EHR data. Evaluation of the efficacy of a coding system can be difficult and sometimes left up to the end user (Bodenreider et al 2008). Not to mention, changes in coding standards can be problematic (Machikanti 2011). In HIE data, special consideration should also be given to the possibility of several coexisting coding systems from different source institutions.
+Back to the types of phenotyping in HIEs. Rule based phenotypes use structured data, coded or otherwise, and a set of rules to define the condition of interest. For example, a Type 2 Diabetes Mellitus Phenotype could be defined by a single ICD code, a series of lab values, drug codes and demographic conditions, or some combination of the above (Pecheco and Thompson 2012). Complexity of rules can vary depending on the use case.
+Machine learning based phenotyping methods employ modern machine learning algorithms. These can include supervised algorithms such as SVM or ARM trained on a gold standard data set. More recently unsupervised algorithms have also been used for phenotyping (Banda et al 2018).
+NLP based phenotyping methods involve parsing the unstructured clinical text stored in the EHR. Most modern NLP phenotyping approaches apply machine learning (Banda et al 2018). Because the majority of EHR is unstructured, NLP methods can sometimes perform better than their structured counterparts (Lu et al 2019).
+Not unlike matching algorithms, phenotypes are implicitly associated with accuracy metrics. Ultimately, whether it is a rule-based method coded in SQL by a data analyst or a machine learning algorithm ran by a data scientist, a phenotype is an imperfect classifier. Like any clinical test, a phenotype may have false positives and false negatives. Phenotypes can suffer when run across varying data sources (Wei et al 2012). HIEs compound this risk by combining data from potentially dozen of EMRs.
+Accuracy is not the only aspect of ethical phenotyping. Is it ethical to use proprietary coding systems in phenotype developments? Not all coding systems are free and open to the public. In particular, the widely used CPT coding systems requires a paid license. Is it fair to individuals and communities whose data is used for clinical research to have study results obfuscated by a pay wall? Could patients then lose out on potential benefits? Could this financial gatekeeping erode patient trust?
+Recent advances in “high-throughput” phenotyping allow for the rapid generation of clinically meaningful phenotypes via EHR data (Hripcsak and Albers 2013), without human intervention. Artificial Intelligence can perform just as well as trained physicians at certain clinical tasks (Rajpurkar et al 2017). So, should patients be made aware if they fit certain phenotypic definitions? If an algorithm indicates that a patient is pre-diabetic, is it ethical to disclose that to them? Is it ethical not to? Consider more life-threatening conditions. What if a validated phenotype disagrees with the physicians notes in the EHR? Should these discrepancies be acted upon? If you or your physician were unaware of your disease risk, would you want to be notified that an algorithm detected it without your consent?
+In summary, here are some more questions to consider:</p>
+<ul>
+<li>Was phenotyping used for my HIE data extract? If so, what kind?</li>
+<li>Was it validated? Has it been used anywhere else?</li>
+<li>What are potential biases of the phenotype?</li>
+<li>Was the phenotype performant enough to represent the group of interest? For an analysis, how accurate is accurate enough? 80%? 90%? 99.9%?</li>
+<li>Are proprietary coding systems ethical?</li>
+<li>Is it ethical to notify or not notify a patient of their inclusion criteria?</li>
+<li>Can phenotyping be subjective? Do different algorithms or different queries produce varying results?</li>
+<li>Is the cohort size robust with respect to phenotyping method?</li>
+</ul>
+</div>
+<div id="deidentification-and-data-synthesis" class="section level2">
+<h2>Deidentification and Data Synthesis</h2>
+<p>As a prerequisite to this section, let us discuss governance around the Protected Health Information (PHI) that is stored in EHRs. As mentioned above, congress passed HIPAA in 1996, which was eventually updated with the HIPAA Privacy Rule a few years later. This rule protects patient health information and imposes requirements upon the institutions collecting and using it. Per HIPAA, there are only a few select circumstances in which patient information, such as PHI, can be disclosed without patient consent. This includes primary EHR uses such as treatment and billing as well as a few secondary uses—such as research. (Finnell &amp; Dixon, 2016).
+This is where an Institutional Review Board (IRB) comes in. As of April 2003, IRBs can grant waivers to the Privacy Rule’s PHI disclosure requirements (NIH 2007). This basically means a researcher can use patient data without consent if their study protocol is IRB approved. Although each data source for an HIE may have its own institutional requirements, patient data can still be disclosed from HIEs en masse. Typically, researchers write inclusion criteria into their study protocol, limiting the size of data extracts from HIEs. It then becomes the job of a Data Analysts to create a dataset that simultaneously meets the researcher’s analytical requirements and complies with the IRB protocol. Central to this informational tug-of-war is the idea of de-identification.
+As far as the IRB is concerned, there are broadly three levels of de-identification: Identified, Limited, and De-identified. Each level protects patient information in a different sense but brings about its own analytical challenges.</p>
+<ul>
+<li>Identified: The data contains unmasked PHI such as names, birth dates, SSNs, and other personal identifiers</li>
+<li>Limited: The data does not contain PHI but contains certain information that could possibly lead to identification. For example, exact visit dates, prescription dates, etc.</li>
+<li>De-identified: The data is either “Safe-Harbor” or meets an “Expert determination” (also called “Statistician’s certification”) that there is a sufficiently small chance of re-identification. Safe harbor requires a laundry list of identifiers to be removed from the data (HHS 2015).</li>
+</ul>
+<p>Legally, research data can be extracted from HIEs without patient consent. Keep in mind, legal does not necessarily mean ethical. Because HIEs are a step removed from the EHRs, patients are even less likely to know that their data lives there, let alone is being used for research without their consent. This is important to consider when using such data. Also, IRB approval is typically contingent on the idea of minimum use, meaning that the researcher is receiving no more data than necessary to achieve the goal of their study. Data scientists often prefer an overabundance of data, so they can do their own feature extraction. With the apparent wealth of data in HIEs, it can then be tempting for a Data Scientist to shoot past the minimum necessary mandate and disregard de-identification procedures in favor of the highest data volume possible. At this point, it is key to take a step back and think ethically. While it can be tempting to see if an ambiguously worded IRB protocol slips past a Review Board, that does not constitute ethical research practice and may very well be illegal.
+Sometimes, patient level data is not needed for research, instead aggregate counts are derived from HIEs. In such cases, the data is usually assumed to be deidentified and readily marked “exempt” by the IRBs. For aggregate data, a common practice is to mask counts less than 10 (Klann et al 2018). To some, this might solve the problem of patient level data disclosure. It might, but ethical considerations are not limited to the individual. From an ethics perspective, why should privacy stop at a personal level. Are communities and groups not entitled to privacy as well? Given that groups being clinically studied may be especially vulnerable or high risk, should they be afforded privacy as a collective? What about minority populations that already suffer disproportionally adverse outcomes due to inequities in health care? Do these populations not deserve advocacy prior to being analyzed as a group? One should assess the role of culture relativism (Brey 2007) in deidentification.
+Data Synthesis in the context of HIEs refers to the use of algorithms that can use patient data to create a statistically comparable “synthetic” datasets. This is in a sense, de-identification taken to an extreme: the new dataset technically contains no patient data whatsoever. Data Synthesis is computationally burdensome (Ullman et al 2011) and implemented via modern machine learning algorithms such as random forests (Ciaola et al 2010) and GANs (Beaulieu-Jones et al 2019). Despite the processing burden, circumventing the governance challenges imposed by HIPAA can be very appealing to research organizations. In one case, a prominent HIE-based research institute partnered with a new clinical data synthesis company to “Accelerate Data-Drive Medical Research” (Regenstrief 2018). At first data synthesis seems like an ideal solution to patient privacy, but it introduces several of ethical challenges. First, data synthesis is limited almost entirely to structured data. Does the appeal of data velocity and volume cause researchers to stray away from unstructured data, which constitutes most EHR data to begin with? What are the limits of the data synthesis engine? Data synthesis is a complicated and computationally intensive procedure with many stress points, e.g., is there enough training data? Again, how performant must the algorithm to be create ethically sound research data? Is it ethical to use the black box synthesis algorithms provided by for profit companies? While the synthetic data may no longer belong to any patient, does it represent information about a community that should be privileged?
+As Finnel and Dixon’s 2016 Textbook, “Clinical Informatics Study Guide” aptly put it:
+“… future informaticians will need to decide whether HIPAA’s deidentification methodologies (Safe Harbor and “statistician certification”) are adequate in an era of big data”
+The future is now, and we are living in the eras of big data and data science. With this, we should ask the following questions:</p>
+<ul>
+<li>What is the minimum necessary amount of data needed from the HIE to conduct an analysis?</li>
+<li>Does the data extract need to be identifiable? Limited? De-identified?</li>
+<li>Again, does the IRB completely understand the role of the HIE in the study protocol?</li>
+<li>Does “Expert Determination” apply here? Is it good enough?</li>
+<li>Could my dataset lead to a breach of private information? What is the worst-case scenario? Am I following all data management protocols outlined by the IRB?</li>
+<li>In general, has the IRB been respected? Has ambiguous or confusing terminology been used to acquire more data than minimally necessary?</li>
+<li>If an over-abundance of features is somehow acquired for the sake of feature selection, does this risk of additional data outweigh the potential benefit to the community being studied?</li>
+<li>If data is de-identified or aggregated, does the privacy of a group remain protected?</li>
+<li>Does data synthesis lead a research quality replacement data?</li>
+<li>Are the data synthesis practices a black box? Could they be explained in a methods section? Are they ethical?</li>
+<li>Are the corners cut by using data synthesis worth a potentially erroneous study?</li>
+</ul>
+</div>
+<div id="demographic-data-and-health-disparities" class="section level2">
+<h2>Demographic Data and Health Disparities</h2>
+<p>While the wealth of information stored in EHRs can improve health outcomes for some, other groups may be left behind. Health Disparity is when group of patients have worse outcomes than the overall population. Health disparities are worldwide, countless, and importantly linked to social disparities and inequities. Disparities can be intersectional and do further harm when combined (Kawachi et al 2005).
+Just as a few examples, in the United States, black infant mortality is twice as high white infant mortality (Schoendorf et al 1992), pain in black patients is undervalued and undertreated (Trawalter et al 2012), black patients have a higher likelihood of mortality and liver transplant due to HCC, (Dakhoul et al 2019), people with disabilities are disadvantaged in interacting with their health records (Veinot et al 2018), and lesbian populations receiving reduced rates of cervical cancer screening (Cahill et al 2014). Again, these are only a few examples out of many. My discussion is limited in scope to just HIEs, so I suggest some further reading that gives the topic adequate time and thought (Lynch 2020), (Perez 2019).
+Rarely in practice have I seen patient matching analyzed through a health disparities lens. Demographic variables such as age, sex, and race are commonly and necessarily used for patient matching. There are legitimate concerns about the quality of race and ethnicity data in EHRs (Polubriaginof 2019). Can these data be reliably used for patient matching? Should race and ethnicity fields be used for matching at all? Is it acceptable to not use them? One should consider the fact that demographics may be coded differently in and HIE’s various source systems.
+Suppose a correct patient is match is made, then comes the challenge of data harmonization. How should one handle differing demographic records across multiple systems? In practice, there is usually two approaches: pre-extract and post-extract. In a pre-extract approach, the analyst preparing the extract from the HIE merges the demographic values into a single record. The value of this approach is that the analyst has deep knowledge about the backend of the HIE database that allows them to produce a single, “clean” demographic record for each patient. They construct rules for querying the database based on their elevated access and the ability to identify patterns within the database. The drawback of this method is that pre-extract demographic harmonization has downstream consequences for studies conducted on the data. Some study teams prefer to these data cleaning decisions themselves, which is where post-extract harmonization comes in. In these cases, the analyst will include all a patient’s raw demographic data in the data extract. It is then up to the study team to merge and clean patient’s demographic data. This method can be advantageous as it gives the biostatistician or data scientist more control and flexibility in their analysis. However, it typically put the burden of data harmonization on those with less direct experience with the data. Study teams familiar with cleaner EHR data may not anticipate or accept the responsibility of post-extract harmonization.
+In either case, data cleaning decisions are almost always necessary. Consider the following imaginary patient data, where records have been joined by patient matching and assigned a common Patient ID:</p>
+<div id="htmlwidget-2" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"filter":"none","data":[["1","2","3"],[1234,1234,1234],["Male","Male","Female"],["White","Hispanic","NULL"],["1/1/1900","8/4/2020","9/15/2020"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Patient.ID<\/th>\n      <th>Sex<\/th>\n      <th>Race<\/th>\n      <th>Update.Date<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":1},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<p>When dozens of institutions are feeding data into an HIE, sights like the above are common. There are clearly two disagreeing values for sex. How should this be approached. Should we just use the most frequent value? Could the less frequent “Female” value be in the HIE by error or for a legitimate reason? Demographic records can be associated with a collection or update date, as seen above. Should we just use the most recently updated record? What if these seems to be issues with the update dates as well, then what? If we decided to simply take the most frequent value, what if certain values are tied for most frequent. The “Race” column above highlights an unfortunate reality of race data: it is often erroneously intermingled with ethnicity data. Should the “Hispanic” value in the race column be used in some other way, or just thrown out altogether? How should NULL values, of which there are usually many, be handled? One helpful approach from a statistical point of view is to provide indicator variables missingness and value multiplicity wherever possible.
+What may seem like series of small and inconsequential decisions by an analyst or researcher can compound into ethically dubious research practices. Racial bias can be coded directly into EHR phenotypes (Vyas et al 2020). Inappropriate gender aggregation practices have created numerous health inequities for women (Perez 2019). Decisions made while researching HIE data can impact health inequities. HIE based research should never create or further health disparities. A community’s data should only be used to better their health, and research done on that data should never disproportionately harm a certain population. It is imperative then, to treat demographic data with special caution, concern, and respect.
+Here are just a few of the many questions a researcher should ask themselves regarding demographic data in HIEs?</p>
+<ul>
+<li>How many different data sources are in the HIE? How do these sources store demographic data differently?</li>
+<li>What are the potential biases in the collection of demographic data?</li>
+<li>How do current health disparities effect data collection?</li>
+<li>What health disparities exists in the population of interest?</li>
+<li>Does the HIEs patient matching process rely on any demographic fields? To what extent? Why or why not?</li>
+<li>If pre-extract data harmonization is done, is the analyst’s methodology completely transparent? What biases could be introduced? Was a standardized approach used?</li>
+<li>If post-extract data harmonization is done, does the study team completely understand the nuances of the demographic source data? What biases could be introduced by this methodology? Are null variables and indicators handled appropriately from a statistical point of view?</li>
+<li>Could my methodology promote health disparities? How?</li>
+<li>How can a limit or stop health disparities?</li>
+<li>Should patients’ consent be required for demographic aggregation?</li>
+<li>Could undisclosed data harmonization further damage the already eroded trust of minority population in the health care industry?</li>
+<li>Are studies proportionally benefiting groups whose data is being used?</li>
+</ul>
+</div>
+<div id="other-considerations" class="section level2">
+<h2>Other Considerations</h2>
+<p>Again, the above topics are just pieces of a much larger puzzle. Up until this point, we have constructed a framework for looking at HIE ethics via a few key issues. The following questions are just as important but do not quite fit neatly in the above categories:</p>
+<div id="irb-and-hie" class="section level3">
+<h3>IRB and HIE</h3>
+<p>When human subjects are involved in a study, approval from an IRB (Institutional Review Board) is usually necessary. Therefore, secondary use of HIE data for research usually needs to be IRB approved. While the IRBs vetting process can be stringent, approval does not necessarily guarantee ethical use. Therefore, one should consider the following:</p>
+<ul>
+<li>Does the approving IRB understand the difference between an EHR and the HIE of interest?</li>
+<li>Has the IRB been presented with confusing or ambiguous language?</li>
+</ul>
+</div>
+<div id="reproducibility" class="section level3">
+<h3>Reproducibility</h3>
+<p>Reproducibility is key to ethical research. In the context of HIEs:</p>
+<ul>
+<li>Is the analysis reproducible?</li>
+<li>Is the data extraction reproducible?</li>
+<li>How can a study be reproducible if the data must be destroyed?</li>
+<li>Are methods transparent?</li>
+<li>Does the use of proprietary software prevent or limit a patient or community’s ability to understand the result of a study that may impact them? Does it limit peer or self-reproducibility?</li>
+</ul>
+</div>
+<div id="data-collaboratives-and-networks" class="section level3">
+<h3>Data Collaboratives and Networks</h3>
+<p>Institutions with EHR data can participate in consortiums to facilitate research on a larger scale. These groups, such as eMERGE, I2B2, PCORNET, and OHDSI facilitate collaboration by means such as common data models and distributed queries. It is also possible for HIEs to participate in these collaboratives, but should take a few additional cautions</p>
+<ul>
+<li>Do networks share common ethics?</li>
+<li>Networks sites are typically based on EHRs. Are all collaborators made aware of HIEs-based sites and the unique challenges that they face?</li>
+</ul>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Technological artifacts such as algorithms and statistical models, can be inherently political (Winner 1980). In using HIE data for secondary research, one therefore embeds ethics in their analysis. Modern data science implicitly introduces a wide range of complicated ethical questions when applied to Health Information Exchange data. The goal of this paper was to confront the reader with some of those questions, so that they may feel more equipped to take them on in practice.</p>
+</div>
+<div id="citations" class="section level2">
+<h2>Citations</h2>
+<p>AMA. (2020). AMA CPT Licensing Overview. <a href="https://www.ama-assn.org/practice-management/cpt/ama-cpt-licensing-overview" class="uri">https://www.ama-assn.org/practice-management/cpt/ama-cpt-licensing-overview</a>.
+Angst, C. M. (2009). Protect my privacy or support the common-good? Ethical questions about electronic health information exchanges. Journal of Business Ethics, 90(2), 169-178.
+Banda, J. M., Seneviratne, M., Hernandez-Boussard, T., &amp; Shah, N. H. (2018). Advances in electronic phenotyping: from rule-based definitions to machine learning models. Annual review of biomedical data science, 1, 53-68.
+Beaulieu-Jones, B. K., Wu, Z. S., Williams, C., Lee, R., Bhavnani, S. P., Byrd, J. B., &amp; Greene, C. S. (2019). Privacy-preserving generative deep neural networks support clinical data sharing. Circulation: Cardiovascular Quality and Outcomes, 12(7), e005122.
+Bodenreider, O. (2008). Biomedical ontologies in action: role in knowledge management, data integration and decision support. Yearbook of medical informatics, 67.
+Brey, P. (2007). Is information ethics culture-relative? International Journal of Technology and Human Interaction, 3(3), 12–24. <a href="https://doi.org/10.4018/jthi.2007070102" class="uri">https://doi.org/10.4018/jthi.2007070102</a>
+Caiola, G., &amp; Reiter, J. P. (2010). Random Forests for Generating Partially Synthetic, Categorical Data. Trans. Data Priv., 3(1), 27-42.
+Cahill, S., &amp; Makadon, H. (2014). Sexual orientation and gender identity data collection in clinical settings and in electronic health records: a key to ending LGBT health disparities. LGBT health, 1(1), 34-41.
+Congress. (2019). S.2538 - National Patient Identifier Repeal Act of 2019 <a href="https://www.congress.gov/bill/116th-congress/senate-bill/2538" class="uri">https://www.congress.gov/bill/116th-congress/senate-bill/2538</a>.
+Dakhoul, L., Gawrieh, S., Jones, K. R., Ghabril, M., McShane, C., Orman, E., … &amp; Nephew, L. (2019). Racial disparities in liver transplantation for hepatocellular carcinoma are not explained by differences in comorbidities, liver disease severity, or tumor burden. Hepatology communications, 3(1), 52-62.
+Finnell, J. T., &amp; Dixon, B. E. (Eds.). (2015). Clinical informatics study guide: Text and review. Springer.
+Grannis, S. J., Xu, H., Vest, J. R., Kasthurirathne, S., Bo, N., Moscovitch, B., … &amp; Rising, J. (2019). Evaluating the effect of data standardization and validation on patient matching accuracy. Journal of the American Medical Informatics Association, 26(5), 447-456.
+Health IT. (2020). What is HIE? <a href="https://www.healthit.gov/topic/health-it-and-health-information-exchange-basics/what-hie" class="uri">https://www.healthit.gov/topic/health-it-and-health-information-exchange-basics/what-hie</a>.
+HHS. (2015). Guidance Regarding Methods for De-identification of Protected Health Information in Accordance with the Health Insurance Portability and Accountability Act (HIPAA) Privacy Rule. <a href="https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html" class="uri">https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html</a>
+Hripcsak, George, and David J. Albers. “Next-generation phenotyping of electronic health records.” Journal of the American Medical Informatics Association 20.1 (2013): 117-121.
+Kawachi, I., Daniels, N., &amp; Robinson, D. E. (2005). Health disparities by race and class: why both matter. Health Affairs, 24(2), 343-352.
+Klann, J. G., Joss, M., Shirali, R., Natter, M., Schneeweiss, S., Mandl, K. D., &amp; Murphy, S. N. (2018). The Ad-Hoc uncertainty principle of patient privacy. AMIA Summits on Translational Science Proceedings, 2018, 132.
+Kreimeyer, K., Foster, M., Pandey, A., Arya, N., Halford, G., Jones, S. F., … &amp; Botsis, T. (2017). Natural language processing systems for capturing and standardizing unstructured clinical information: a systematic review. Journal of biomedical informatics, 73, 14-29.
+Lu, K., Li, M., &amp; Wu, J. (2019). Managing unstructured and structured big data in healthcare system: generating valid real-world evidence by natural language processing.
+Lynch, J. (2020). Regimes of inequality: the political economy of health and wealth. Cambridge University Press.
+Manchikanti, L., Falco, F. J., &amp; Hirsch, J. A. (2011). Necessity and implications of ICD-10: Facts and fallacies. Pain physician, 14(5), E405-E425.
+Mills, S., Lee, J. K., Rassekh, B. M., Kodelja, M. Z., Bae, G., Kang, M., … &amp; Kijsanayotin, B. (2019). Unique health identifiers for universal health coverage. Journal of Health, Population and Nutrition, 38(1), 22.
+NIH. (2007). Institutional Review Boards and the HIPAA Privacy Rule. <a href="https://privacyruleandresearch.nih.gov/irbandprivacyrule.asp" class="uri">https://privacyruleandresearch.nih.gov/irbandprivacyrule.asp</a>.
+O’Brien, E. C., Rodriguez, A. M., Kum, H. C., Schanberg, L. E., Fitz-Randolph, M., O’Brien, S. M., &amp; Setoguchi, S. (2019). Patient perspectives on the linkage of health data for research: insights from an online patient community questionnaire. International journal of medical informatics, 127, 9-17.
+Ong, T. C., Duca, L. M., Kahn, M. G., &amp; Crume, T. L. (2020). A hybrid approach to record linkage using a combination of deterministic and probabilistic methodology. Journal of the American Medical Informatics Association, 27(4), 505-513.
+Panozzo, C. A., Woodworth, T. S., Welch, E. C., Huang, T. Y., Her, Q. L., Haynes, K., … &amp; Haug, N. R. (2018). Early impact of the ICD‐10‐CM transition on selected health outcomes in 13 electronic health care databases in the United States. Pharmacoepidemiology and Drug Safety, 27(8), 839-847.
+Pacheco, J., Thompson, W. (2012). Type 2 Diabetes Mellitus. PheKB. <a href="https://www.phekb.org/phenotype/type-2-diabetes-mellitus" class="uri">https://www.phekb.org/phenotype/type-2-diabetes-mellitus</a>.
+Perez, C. C. (2019). Invisible women: Exposing data bias in a world designed for men. Random House.
+Polubriaginof, F. C., Ryan, P., Salmasian, H., Shapiro, A. W., Perotte, A., Safford, M. M., … &amp; Vawdrey, D. K. (2019). Challenges with quality of race and ethnicity data in observational databases. Journal of the American Medical Informatics Association, 26(8-9), 730-736.
+Rajpurkar, P., Hannun, A. Y., Haghpanahi, M., Bourn, C., &amp; Ng, A. Y. (2017). Cardiologist-level arrhythmia detection with convolutional neural networks. arXiv preprint arXiv:1707.01836.
+Regenstrief. (2018). Regenstrief Institute-MDClone Partnership to Accelerate Data-Driven Medical Research. <a href="https://www.regenstrief.org/article/ri-mdclone-partnership-to-accelerate-data-driven-medical-research/" class="uri">https://www.regenstrief.org/article/ri-mdclone-partnership-to-accelerate-data-driven-medical-research/</a>.
+Schoendorf, K. C., Hogue, C. J., Kleinman, J. C., &amp; Rowley, D. (1992). Mortality among infants of black as compared with white college-educated parents. New England Journal of Medicine, 326(23), 1522-1526.
+Trawalter, S., Hoffman, K. M., &amp; Waytz, A. (2012). Racial bias in perceptions of others’ pain. PloS one, 7(11), e48546.
+Ullman, J., &amp; Vadhan, S. (2011, March). PCPs and the hardness of generating private synthetic data. In Theory of Cryptography Conference (pp. 400-416). Springer, Berlin, Heidelberg.
+Veinot, T. C., Mitchell, H., &amp; Ancker, J. S. (2018). Good intentions are not enough: how informatics interventions can worsen inequality. Journal of the American Medical Informatics Association, 25(8), 1080-1088.
+Vyas, D. A., Eisenstein, L. G., &amp; Jones, D. S. (2020). Hidden in plain sight—reconsidering the use of race correction in clinical algorithms.
+Wei, W. Q., Leibson, C. L., Ransom, J. E., Kho, A. N., Caraballo, P. J., Chai, H. S., … &amp; Chute, C. G. (2012). Impact of data fragmentation across healthcare centers on the accuracy of a high-throughput clinical phenotyping algorithm for specifying subjects with type 2 diabetes mellitus. Journal of the American Medical Informatics Association, 19(2), 219-224.
+Winner, L. (1980). Do artifacts have politics?. Daedalus, 121-136.
+Whittenburg, L. 2019. Standardized Terminologies for Data Interoperability in Health Information Exchange. <a href="https://www.interoperabilityshowcase.org/sites/interoperabilityshowcase/files/jpsystems_-_standard_terminologies_for_interoperability.pdf" class="uri">https://www.interoperabilityshowcase.org/sites/interoperabilityshowcase/files/jpsystems_-_standard_terminologies_for_interoperability.pdf</a>
+Zech, J., Husk, G., Moore, T., &amp; Shapiro, J. S. (2016). Measuring the degree of unmatched patient records in a health information exchange using exact matching. Applied clinical informatics, 7(2), 330.
+Zhu, V. J., Overhage, M. J., Egg, J., Downs, S. M., &amp; Grannis, S. J. (2009). An empiric modification to the probabilistic record linkage algorithm using frequency-based weight scaling. Journal of the American Medical Informatics Association, 16(5), 738-745.</p>
+</div>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+    
+<script src="/js/math-code.js"></script>
+<script async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+
+    
+  </body>
+</html>
+
