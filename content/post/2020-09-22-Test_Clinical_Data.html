@@ -1,78 +1,11 @@
-<!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Hugo 0.74.3" />
+---
+title: "How To: Create a Practice OMOP Dataset in R"
+author: "Jack VanSchaik"
+date: 2020-09-22
+categories: ["R" , "Howto", "EHR"]
+tags: ["R Markdown", "R", "OMOP", "clinical", "OHDSI", "Howto", "tidyverse"]
+---
 
-
-<title>How To: Create a Test OMOP Dataset in R - A Hugo website</title>
-<meta property="og:title" content="How To: Create a Test OMOP Dataset in R - A Hugo website">
-
-
-  <link href='/favicon.ico' rel='icon' type='image/x-icon'/>
-
-
-
-  
-
-
-
-
-
-
-
-
-<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
-
-
-
-<link rel="stylesheet" href="/css/fonts.css" media="all">
-<link rel="stylesheet" href="/css/main.css" media="all">
-
-
-
-  </head>
-  <body>
-    <div class="wrapper">
-      <header class="header">
-        <nav class="nav">
-  <a href="/" class="nav-logo">
-    <img src="/images/IMG_8052.jpg"
-         width="50"
-         height="50"
-         alt="Logo">
-  </a>
-
-  <ul class="nav-links">
-    
-    <li><a href="/about/">About</a></li>
-    
-    <li><a href="https://github.com/jackvanschaik">GitHub</a></li>
-    
-    <li><a href="https://twitter.com/VanschaikJack">Twitter</a></li>
-    
-  </ul>
-</nav>
-
-      </header>
-
-
-<main class="content" role="main">
-
-  <article class="article">
-    
-    <span class="article-duration">8 min read</span>
-    
-
-    <h1 class="article-title">How To: Create a Test OMOP Dataset in R</h1>
-
-    
-    <span class="article-date">2020-09-22</span>
-    
-
-    <div class="article-content">
-      
 <script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
 <script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
 <link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
@@ -394,47 +327,3 @@ datatable(top_10_snomed)</code></pre>
 <script type="application/json" data-for="htmlwidget-2">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10"],[4015724,4214956,440927,4046550,440922,4167217,4058431,4186037,4059467,40479553],["Vaccination required","History of clinical finding in subject","High risk drug monitoring status","Postoperative care","Diabetic on insulin","Family history of clinical finding","H/O: artificial joint","Aftercare","H/O: artificial eye lens","Cardiac pacemaker in situ"],[642,623,513,325,252,249,241,233,200,159]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>concept_id<\/th>\n      <th>concept_name<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,3]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 <p>And there you have it! It looks like ‘Vaccination Required’ is the most common SNOMED observation in this dataset. I hope to go more in depth about different data wrangling techniques in the future. Hopefully, this is enough to get you started.</p>
 </div>
-
-    </div>
-  </article>
-
-  
-
-
-</main>
-
-      <footer class="footer">
-        <ul class="footer-links">
-          <li>
-            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
-          </li>
-          <li>
-            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
-          </li>
-        </ul>
-      </footer>
-
-    </div>
-    
-
-
-
-<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
-
-
-
-<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
-<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
-
-
-
-    
-<script src="/js/math-code.js"></script>
-<script async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
-
-
-    
-  </body>
-</html>
-

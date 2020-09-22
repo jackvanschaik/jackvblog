@@ -1,0 +1,313 @@
+---
+title: "How To: Create a Practice OMOP Dataset in R"
+author: "Jack VanSchaik"
+date: 2020-09-22
+categories: ["R" , "Howto", "EHR"]
+tags: ["R Markdown", "R", "OMOP", "clinical", "OHDSI", "Howto", "tidyverse"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+
+## Introduction
+
+The use of electronic health record (EHR) data is common and often necessary in clinical research. These data can be cumbersome and complicated, yet inaccessible due to privacy laws. My goal in this post is to set the reader up with a "fake" clinical dataset so that they can learn the ins and out of EHR data and feel more prepared when they encounter the real thing.
+
+## OMOP
+
+There are many EHR systems, most of which are proprietary (EPIC, Cerner, etc...) and use their own formats. The [OMOP Common Data Model](https://www.ohdsi.org/data-standardization/the-common-data-model/) (CDM) is an open format used by multiple institutions to share data and encourage collaboration. The OMOP CDM is widely used, growing in popularity, and has [an engaged community of users and developers](https://forums.ohdsi.org/). OMOP has a publicly available, 1000 patient, synthetic sample of CMS data in OMOP CDM format: a perfect candidate for test data. 
+
+YOu can find the [complete documentation of the OMOP CDM on the OHDSI wiki](https://github.com/OHDSI/CommonDataModel/wiki). Notice for this article we'll be using a slightly older version. 
+
+**Step 1:** Download and extract the synthetic OMOP data from [this site](http://www.ltscomputingllc.com/downloads/).
+
+For me, the extracted files are in `C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2`. Listing the files in R:
+
+```{r}
+list.files("C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2")
+```
+
+If you look at those file names, you'll see they align with the CDM specification linked to above. There are a few tables missing though-- most importantly the `CONCEPT` tables. These tables are critical as they map all the numeric concept ids in the tables to meaningful codes like RxNORM and SNOMED. Fear not, we can get these data from ATHENA.
+
+## ATHENA
+
+[ATHENA](https://athena.ohdsi.org/search-terms/start) is the OHDSI vocabularies repository. It contains all the concept mapping information standard in OMOP. The site make this information available via downloadable tables.
+
+**Step 2:** Go to [athena.ohdsi.org](https://athena.ohdsi.org/search-terms/start) and create an account. When you have your account created, go to the `DOWNLOAD` tab in the top right.
+
+![](/images/Capture1.JPG)
+*ATHENA Downloads Page*
+
+Select all the available vocabularies that you want. Some may not be available because they are proprietary. When you're ready, click the download vocabularies button. The download won't happen right away, you'll have to wait just a few minutes.
+
+Once you've downloaded your zip file, extract it. I extracted to: `C:/Users/Jack/Documents/data/vocabulary_download_v5`
+
+```{r}
+list.files("C:/Users/Jack/Documents/data/vocabulary_download_v5")
+```
+
+## Loading the tables into R
+
+### CMS tables
+
+**Step 3:**
+
+Now we want to load the data in. Let's use `readr` from the tidyverse. The CMS data is actually in tsv format. Let's load a few tables using `read_tsv`.
+
+```{r}
+library(readr)
+
+# Set working directory to where you saved the CMS data
+setwd("C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2")
+
+# Load the tables in using the read_tsv function
+condition_occurrence <- read_tsv("condition_occurrence.csv", col_names = FALSE, col_types = cols())
+death <- read_tsv("death.csv", col_names = FALSE, col_types = cols())
+device_exposure <- read_tsv("device_exposure.csv", col_names = FALSE, col_types = cols())
+drug_exposure <- read_tsv("drug_exposure.csv", col_names = FALSE, col_types = cols())
+measurement <- read_tsv("measurement.csv", col_names = FALSE, col_types = cols())
+observation <- read_tsv("observation.csv", col_names = FALSE, col_types = cols())
+observation_period <- read_tsv("observation_period.csv", col_names = FALSE, col_types = cols())
+person <- read_tsv("person.csv", col_names = FALSE, col_types = cols())
+procedure_occurrence <- read_tsv("procedure_occurrence.csv", col_names = FALSE, col_types = cols())
+visit_occurrence <- read_tsv("visit_occurrence.csv", col_names = FALSE, col_types = cols())
+
+```
+
+**Step 4:**
+
+You may have noticed that the CMS data didn't come with any column names. We'll add those now using the historical specification for CDM 5.2.2. Buckle your seatbelts:
+
+
+```{r, collapse=TRUE}
+names(condition_occurrence) <- c(
+    "condition_occurence_id",
+    "person_id",
+    "condition_concept_id",
+    "condition_start_date",
+    "condition_start_datetime",
+    "condition_end_date",
+    "condition_end_datetime",
+    "condition_type_concept_id",
+    "stop_reason",
+    "provider_id",
+    "visit_occurrence_id",
+    "condition_source_value",
+    "condition_source_concept_id",
+    "condition_status_source_value",
+    "condition_status_concept_id"
+)
+
+names(death) <- c(
+    "person_id",
+    "death_date",
+    "death_datetime",
+    "death_Type_concept_id",
+    "cause_concept_id",
+    "cause_source_value",
+    "cause_source_concept_id"
+)
+
+names(device_exposure) <- c(
+    "device_exposure_id",
+    "person_id",
+    "device_concept_id",
+    "device_exposure_start_date",
+    "device_exposure_start_datetime",
+    "device_exposure_end_date",
+    "device_exposure_end_datetime",
+    "device_type_concept_id",
+    "unique_device_id",
+    "quantity",
+    "provider_id",
+    "visit_occurrence_id",
+    "device_source_value",
+    "device_source_concept_id"
+)
+
+names(drug_exposure) <- c(
+    "drug_exposure_id",
+    "person_id",
+    "drug_concept_id",
+    "drug_exposure_start_date",
+    "drug_exposure_start_datetime",
+    "drug_exposure_end_date",
+    "drug_exposure_end_datetime",
+    "verbatim_end_date",
+    "drug_type_concept_id",
+    "stop_reason",
+    "refills",
+    "quantity",
+    "days_supply",
+    "sig",
+    "route_concept_id",
+    "lot_number",
+    "provider_id",
+    "visit_occurrence_id",
+    "drug_source_value",
+    "drug_source_concept_id",
+    "route_source_value",
+    "dose_unit_source_value"
+)
+
+names(measurement) <- c(
+    "measurement_id",
+    "person_id",
+    "measurement_concept_id",
+    "measurement_date",
+    "measurement_datetime",
+    "measurement_type_concept_id",
+    "operator_concept_id",
+    "value_as_number",
+    "value_as_concept_id",
+    "unit_concept_id",
+    "range_low",
+    "range_high",
+    "provider_id",
+    "visit_occurence_id",
+    "measurement_source_value",
+    "measurement_source_concept_id",
+    "unit_source_value",
+    "value_source_value"
+)
+names(observation) <- c("observation_id",
+                        "person_id",
+                        "observation_concept_id",
+                        "observation_date",
+                        "observation_datetime",
+                        "observation_type_concept_id",
+                        "value_as_number",
+                        "value_as_string",
+                        "value_as_concept_id",
+                        "qualifier_concept_id",
+                        "unit_concept_id",
+                        "provider_id",
+                        "visit_occurence_id",
+                        "observation_source_value",
+                        "observation_source_concept_id",
+                        "unit_source_value",
+                        "qualifier_source_value")
+
+names(observation_period) <- c(
+    "observation_period_id",
+    "person_id",
+    "observation_period_start_date",
+    "observation_period_end_date",
+    "period_type_concept_id"
+)
+
+names(person) <- c("person_id",
+                   "gender_concept_id",
+                   "year_of_birth",
+                   "month_of_birth",
+                   "day_of_birth",
+                   "birth_datetime",
+                   "race_concept_id",
+                   "ethnicity_concept_id",
+                   "location_id",
+                   "provider_id",
+                   "care_site_id",
+                   "person_source_value",
+                   "gender_source_value",
+                   "gender_source_concept_id",
+                   "race_source_value",
+                   "race_source_concept_id",
+                   "ethnicity_source_value",
+                   "ethnicity_source_concept_id")
+
+names(procedure_occurrence) <- c(
+    "procedure_occurence_id",
+    "person_id",
+    "procedure_concept_id",
+    "procedure_date",
+    "procedure_datetime",
+    "procedure_type_concept_id",
+    "modifier_concept_id",
+    "quantity",
+    "provider_id",
+    "visit_occurrence_id",
+    "procedure_source_value",
+    "procedure_source_concept_id",
+    "qualifier_source_value"
+)
+
+names(visit_occurrence) <- c("visit_occurence_id",
+                             "person_id",
+                             "visit_concept_id",
+                             "visit_start_date",
+                             "visit_start_datetime",
+                             "visit_end_date",
+                             "visit_end_datetime",
+                             "visit_type_concept_id",
+                             "provider_id",
+                             "care_site_id",
+                             "visit_source_value",
+                             "visit_source_concept_id",
+                             "admitting_source_concept_id",
+                             "admitting_source_value",
+                             "discharge_to_concept_id",
+                             "discharge_to_source_value",
+                             "preceding_visit_occurence_id")
+```
+
+There's a few CMS tables that don't have specification per the OMOP 5.2.2 wiki. I've just opted to ignore these. 
+
+### Athena Tables
+
+**Step 5:**
+
+The ATHENA tables do include their own column names. We'll load a few into R. Notice the `concept` table is big and may take a minute to load!
+
+```{r}
+# create a function to load all the tsv files in a folder
+setwd("C:/Users/Jack/Documents/data/vocabulary_download_v5")
+
+concept <- read_tsv("CONCEPT.csv", quote="")
+vocabulary <- read_tsv("VOCABULARY.csv")
+```
+
+Let's take a quick look at the `vocabulary` table to see what concepts we can map to:
+
+```{r}
+library(DT)
+
+datatable(vocabulary)
+```
+
+## An Example Use Case
+
+You now have a working OMOP CDM loaded into R! It's small and synthetic, but it should be enough to get you familiar with relational EHR data.
+
+Here's an example use case: Let's get the top 10 most common SNOMED observations in our test data set. We'll use `dplyr` for data wrangling.
+
+First, let's join the `observation` table to the `concept` table and limit to `SNOMED` concepts.
+
+```{r}
+library(dplyr)
+
+observation %>%
+    select(person_id, observation_concept_id, observation_date) %>%
+    mutate(concept_id = observation_concept_id) %>%
+    left_join(concept, by="concept_id") %>%
+    filter(vocabulary_id == "SNOMED") ->
+    snomed_obs
+
+nrow(snomed_obs)
+```
+At this point we should ask a question that comes up a lot in clinical data analysis: do we want to consider unique observations, or the number of patients? That is, if a patient has duplicate SNOMED codes, should we count them multiple times? Let's say no, we don't want to double count patients, just to make this a bit more interesting:
+
+```{r}
+snomed_obs %>%
+    select(person_id, concept_id, concept_name) %>%
+    distinct %>%
+    count(concept_id, concept_name) %>%
+    arrange(desc(n)) %>%
+    head(n=10) ->
+    top_10_snomed
+
+datatable(top_10_snomed)
+```
+
+And there you have it! It looks like 'Vaccination Required' is the most common SNOMED observation in this dataset. I hope to go more in depth about different data wrangling techniques in the future. Hopefully, this is enough to get you started. 
