@@ -12,6 +12,15 @@
     
     
     <item>
+      <title>EHR</title>
+      <link>/categories/ehr/</link>
+      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/categories/ehr/</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>HIE</title>
       <link>/categories/hie/</link>
       <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
@@ -21,9 +30,18 @@
     </item>
     
     <item>
+      <title>Howto</title>
+      <link>/categories/howto/</link>
+      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/categories/howto/</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>R</title>
       <link>/categories/r/</link>
-      <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>
+      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/categories/r/</guid>
       <description></description>

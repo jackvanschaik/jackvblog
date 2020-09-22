@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.74.3" />
+
+
+<title>How To: Create a Test OMOP Dataset in R - A Hugo website</title>
+<meta property="og:title" content="How To: Create a Test OMOP Dataset in R - A Hugo website">
+
+
+  <link href='/favicon.ico' rel='icon' type='image/x-icon'/>
+
+
+
+  
+
+
+
+
+
+
+
+
+<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/IMG_8052.jpg"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="/about/">About</a></li>
+    
+    <li><a href="https://github.com/jackvanschaik">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/VanschaikJack">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">8 min read</span>
+    
+
+    <h1 class="article-title">How To: Create a Test OMOP Dataset in R</h1>
+
+    
+    <span class="article-date">2020-09-22</span>
+    
+
+    <div class="article-content">
+      
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/datatables-binding/datatables.js"></script>
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/dt-core/js/jquery.dataTables.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The use of electronic health record (EHR) data is common and often necessary in clinical research. These data can be cumbersome and complicated, yet inaccessible due to privacy laws. My goal in this post is to set the reader up with a “fake” clinical dataset so that they can learn the ins and out of EHR data and feel more prepared when they encounter the real thing.</p>
+</div>
+<div id="omop" class="section level2">
+<h2>OMOP</h2>
+<p>There are many EHR systems, most of which are proprietary (EPIC, Cerner, etc…) and use their own formats. The <a href="https://www.ohdsi.org/data-standardization/the-common-data-model/">OMOP Common Data Model</a> (CDM) is an open format used by multiple institutions to share data and encourage collaboration. The OMOP CDM is widely used, growing in popularity, and has <a href="https://forums.ohdsi.org/">an engaged community of users and developers</a>. OMOP has a publicly available, 1000 patient, synthetic sample of CMS data in OMOP CDM format: a perfect candidate for test data.</p>
+<p>YOu can find the <a href="https://github.com/OHDSI/CommonDataModel/wiki">complete documentation of the OMOP CDM on the OHDSI wiki</a>. Notice for this article we’ll be using a slightly older version.</p>
+<p><strong>Step 1:</strong> Download and extract the synthetic OMOP data from <a href="http://www.ltscomputingllc.com/downloads/">this site</a>.</p>
+<p>For me, the extracted files are in <code>C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2</code>. Listing the files in R:</p>
+<pre class="r"><code>list.files(&quot;C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2&quot;)
+##  [1] &quot;care_site.csv&quot;            &quot;cdm_source.csv&quot;          
+##  [3] &quot;condition_era.csv&quot;        &quot;condition_occurrence.csv&quot;
+##  [5] &quot;cost.csv&quot;                 &quot;death.csv&quot;               
+##  [7] &quot;device_exposure.csv&quot;      &quot;drug_era.csv&quot;            
+##  [9] &quot;drug_exposure.csv&quot;        &quot;location.csv&quot;            
+## [11] &quot;measurement.csv&quot;          &quot;observation.csv&quot;         
+## [13] &quot;observation_period.csv&quot;   &quot;payer_plan_period.csv&quot;   
+## [15] &quot;person.csv&quot;               &quot;procedure_occurrence.csv&quot;
+## [17] &quot;provider.csv&quot;             &quot;README.md&quot;               
+## [19] &quot;visit_occurrence.csv&quot;</code></pre>
+<p>If you look at those file names, you’ll see they align with the CDM specification linked to above. There are a few tables missing though– most importantly the <code>CONCEPT</code> tables. These tables are critical as they map all the numeric concept ids in the tables to meaningful codes like RxNORM and SNOMED. Fear not, we can get these data from ATHENA.</p>
+</div>
+<div id="athena" class="section level2">
+<h2>ATHENA</h2>
+<p><a href="https://athena.ohdsi.org/search-terms/start">ATHENA</a> is the OHDSI vocabularies repository. It contains all the concept mapping information standard in OMOP. The site make this information available via downloadable tables.</p>
+<p><strong>Step 2:</strong> Go to <a href="https://athena.ohdsi.org/search-terms/start">athena.ohdsi.org</a> and create an account. When you have your account created, go to the <code>DOWNLOAD</code> tab in the top right.</p>
+<p><img src="images/Capture1.JPG" />
+<em>ATHENA Downloads Page</em></p>
+<p>Select all the available vocabularies that you want. Some may not be available because they are proprietary. When you’re ready, click the download vocabularies button. The download won’t happen right away, you’ll have to wait just a few minutes.</p>
+<p>Once you’ve downloaded your zip file, extract it. I extracted to: <code>C:/Users/Jack/Documents/data/vocabulary_download_v5</code></p>
+<pre class="r"><code>list.files(&quot;C:/Users/Jack/Documents/data/vocabulary_download_v5&quot;)
+##  [1] &quot;CONCEPT.csv&quot;              &quot;CONCEPT_ANCESTOR.csv&quot;    
+##  [3] &quot;CONCEPT_CLASS.csv&quot;        &quot;CONCEPT_CPT4.csv&quot;        
+##  [5] &quot;CONCEPT_RELATIONSHIP.csv&quot; &quot;CONCEPT_SYNONYM.csv&quot;     
+##  [7] &quot;cpt.bat&quot;                  &quot;cpt.sh&quot;                  
+##  [9] &quot;cpt4.jar&quot;                 &quot;DOMAIN.csv&quot;              
+## [11] &quot;DRUG_STRENGTH.csv&quot;        &quot;readme.txt&quot;              
+## [13] &quot;RELATIONSHIP.csv&quot;         &quot;VOCABULARY.csv&quot;</code></pre>
+</div>
+<div id="loading-the-tables-into-r" class="section level2">
+<h2>Loading the tables into R</h2>
+<div id="cms-tables" class="section level3">
+<h3>CMS tables</h3>
+<p><strong>Step 3:</strong></p>
+<p>Now we want to load the data in. Let’s use <code>readr</code> from the tidyverse. The CMS data is actually in tsv format. Let’s load a few tables using <code>read_tsv</code>.</p>
+<pre class="r"><code>library(readr)
+
+# Set working directory to where you saved the CMS data
+setwd(&quot;C:/Users/Jack/Documents/data/synpuf1k_omop_cdm_5.2.2&quot;)
+
+# Load the tables in using the read_tsv function
+condition_occurrence &lt;- read_tsv(&quot;condition_occurrence.csv&quot;, col_names = FALSE, col_types = cols())
+death &lt;- read_tsv(&quot;death.csv&quot;, col_names = FALSE, col_types = cols())
+device_exposure &lt;- read_tsv(&quot;device_exposure.csv&quot;, col_names = FALSE, col_types = cols())
+drug_exposure &lt;- read_tsv(&quot;drug_exposure.csv&quot;, col_names = FALSE, col_types = cols())
+measurement &lt;- read_tsv(&quot;measurement.csv&quot;, col_names = FALSE, col_types = cols())
+observation &lt;- read_tsv(&quot;observation.csv&quot;, col_names = FALSE, col_types = cols())
+observation_period &lt;- read_tsv(&quot;observation_period.csv&quot;, col_names = FALSE, col_types = cols())
+person &lt;- read_tsv(&quot;person.csv&quot;, col_names = FALSE, col_types = cols())
+procedure_occurrence &lt;- read_tsv(&quot;procedure_occurrence.csv&quot;, col_names = FALSE, col_types = cols())
+visit_occurrence &lt;- read_tsv(&quot;visit_occurrence.csv&quot;, col_names = FALSE, col_types = cols())</code></pre>
+<p><strong>Step 4:</strong></p>
+<p>You may have noticed that the CMS data didn’t come with any column names. We’ll add those now using the historical specification for CDM 5.2.2. Buckle your seatbelts:</p>
+<pre class="r"><code>names(condition_occurrence) &lt;- c(
+    &quot;condition_occurence_id&quot;,
+    &quot;person_id&quot;,
+    &quot;condition_concept_id&quot;,
+    &quot;condition_start_date&quot;,
+    &quot;condition_start_datetime&quot;,
+    &quot;condition_end_date&quot;,
+    &quot;condition_end_datetime&quot;,
+    &quot;condition_type_concept_id&quot;,
+    &quot;stop_reason&quot;,
+    &quot;provider_id&quot;,
+    &quot;visit_occurrence_id&quot;,
+    &quot;condition_source_value&quot;,
+    &quot;condition_source_concept_id&quot;,
+    &quot;condition_status_source_value&quot;,
+    &quot;condition_status_concept_id&quot;
+)
+
+names(death) &lt;- c(
+    &quot;person_id&quot;,
+    &quot;death_date&quot;,
+    &quot;death_datetime&quot;,
+    &quot;death_Type_concept_id&quot;,
+    &quot;cause_concept_id&quot;,
+    &quot;cause_source_value&quot;,
+    &quot;cause_source_concept_id&quot;
+)
+
+names(device_exposure) &lt;- c(
+    &quot;device_exposure_id&quot;,
+    &quot;person_id&quot;,
+    &quot;device_concept_id&quot;,
+    &quot;device_exposure_start_date&quot;,
+    &quot;device_exposure_start_datetime&quot;,
+    &quot;device_exposure_end_date&quot;,
+    &quot;device_exposure_end_datetime&quot;,
+    &quot;device_type_concept_id&quot;,
+    &quot;unique_device_id&quot;,
+    &quot;quantity&quot;,
+    &quot;provider_id&quot;,
+    &quot;visit_occurrence_id&quot;,
+    &quot;device_source_value&quot;,
+    &quot;device_source_concept_id&quot;
+)
+
+names(drug_exposure) &lt;- c(
+    &quot;drug_exposure_id&quot;,
+    &quot;person_id&quot;,
+    &quot;drug_concept_id&quot;,
+    &quot;drug_exposure_start_date&quot;,
+    &quot;drug_exposure_start_datetime&quot;,
+    &quot;drug_exposure_end_date&quot;,
+    &quot;drug_exposure_end_datetime&quot;,
+    &quot;verbatim_end_date&quot;,
+    &quot;drug_type_concept_id&quot;,
+    &quot;stop_reason&quot;,
+    &quot;refills&quot;,
+    &quot;quantity&quot;,
+    &quot;days_supply&quot;,
+    &quot;sig&quot;,
+    &quot;route_concept_id&quot;,
+    &quot;lot_number&quot;,
+    &quot;provider_id&quot;,
+    &quot;visit_occurrence_id&quot;,
+    &quot;drug_source_value&quot;,
+    &quot;drug_source_concept_id&quot;,
+    &quot;route_source_value&quot;,
+    &quot;dose_unit_source_value&quot;
+)
+
+names(measurement) &lt;- c(
+    &quot;measurement_id&quot;,
+    &quot;person_id&quot;,
+    &quot;measurement_concept_id&quot;,
+    &quot;measurement_date&quot;,
+    &quot;measurement_datetime&quot;,
+    &quot;measurement_type_concept_id&quot;,
+    &quot;operator_concept_id&quot;,
+    &quot;value_as_number&quot;,
+    &quot;value_as_concept_id&quot;,
+    &quot;unit_concept_id&quot;,
+    &quot;range_low&quot;,
+    &quot;range_high&quot;,
+    &quot;provider_id&quot;,
+    &quot;visit_occurence_id&quot;,
+    &quot;measurement_source_value&quot;,
+    &quot;measurement_source_concept_id&quot;,
+    &quot;unit_source_value&quot;,
+    &quot;value_source_value&quot;
+)
+names(observation) &lt;- c(&quot;observation_id&quot;,
+                        &quot;person_id&quot;,
+                        &quot;observation_concept_id&quot;,
+                        &quot;observation_date&quot;,
+                        &quot;observation_datetime&quot;,
+                        &quot;observation_type_concept_id&quot;,
+                        &quot;value_as_number&quot;,
+                        &quot;value_as_string&quot;,
+                        &quot;value_as_concept_id&quot;,
+                        &quot;qualifier_concept_id&quot;,
+                        &quot;unit_concept_id&quot;,
+                        &quot;provider_id&quot;,
+                        &quot;visit_occurence_id&quot;,
+                        &quot;observation_source_value&quot;,
+                        &quot;observation_source_concept_id&quot;,
+                        &quot;unit_source_value&quot;,
+                        &quot;qualifier_source_value&quot;)
+
+names(observation_period) &lt;- c(
+    &quot;observation_period_id&quot;,
+    &quot;person_id&quot;,
+    &quot;observation_period_start_date&quot;,
+    &quot;observation_period_end_date&quot;,
+    &quot;period_type_concept_id&quot;
+)
+
+names(person) &lt;- c(&quot;person_id&quot;,
+                   &quot;gender_concept_id&quot;,
+                   &quot;year_of_birth&quot;,
+                   &quot;month_of_birth&quot;,
+                   &quot;day_of_birth&quot;,
+                   &quot;birth_datetime&quot;,
+                   &quot;race_concept_id&quot;,
+                   &quot;ethnicity_concept_id&quot;,
+                   &quot;location_id&quot;,
+                   &quot;provider_id&quot;,
+                   &quot;care_site_id&quot;,
+                   &quot;person_source_value&quot;,
+                   &quot;gender_source_value&quot;,
+                   &quot;gender_source_concept_id&quot;,
+                   &quot;race_source_value&quot;,
+                   &quot;race_source_concept_id&quot;,
+                   &quot;ethnicity_source_value&quot;,
+                   &quot;ethnicity_source_concept_id&quot;)
+
+names(procedure_occurrence) &lt;- c(
+    &quot;procedure_occurence_id&quot;,
+    &quot;person_id&quot;,
+    &quot;procedure_concept_id&quot;,
+    &quot;procedure_date&quot;,
+    &quot;procedure_datetime&quot;,
+    &quot;procedure_type_concept_id&quot;,
+    &quot;modifier_concept_id&quot;,
+    &quot;quantity&quot;,
+    &quot;provider_id&quot;,
+    &quot;visit_occurrence_id&quot;,
+    &quot;procedure_source_value&quot;,
+    &quot;procedure_source_concept_id&quot;,
+    &quot;qualifier_source_value&quot;
+)
+
+names(visit_occurrence) &lt;- c(&quot;visit_occurence_id&quot;,
+                             &quot;person_id&quot;,
+                             &quot;visit_concept_id&quot;,
+                             &quot;visit_start_date&quot;,
+                             &quot;visit_start_datetime&quot;,
+                             &quot;visit_end_date&quot;,
+                             &quot;visit_end_datetime&quot;,
+                             &quot;visit_type_concept_id&quot;,
+                             &quot;provider_id&quot;,
+                             &quot;care_site_id&quot;,
+                             &quot;visit_source_value&quot;,
+                             &quot;visit_source_concept_id&quot;,
+                             &quot;admitting_source_concept_id&quot;,
+                             &quot;admitting_source_value&quot;,
+                             &quot;discharge_to_concept_id&quot;,
+                             &quot;discharge_to_source_value&quot;,
+                             &quot;preceding_visit_occurence_id&quot;)</code></pre>
+<p>There’s a few CMS tables that don’t have specification per the OMOP 5.2.2 wiki. I’ve just opted to ignore these.</p>
+</div>
+<div id="athena-tables" class="section level3">
+<h3>Athena Tables</h3>
+<p><strong>Step 5:</strong></p>
+<p>The ATHENA tables do include their own column names. We’ll load a few into R. Notice the <code>concept</code> table is big and may take a minute to load!</p>
+<pre class="r"><code># create a function to load all the tsv files in a folder
+setwd(&quot;C:/Users/Jack/Documents/data/vocabulary_download_v5&quot;)
+
+concept &lt;- read_tsv(&quot;CONCEPT.csv&quot;, quote=&quot;&quot;)
+## Parsed with column specification:
+## cols(
+##   concept_id = col_double(),
+##   concept_name = col_character(),
+##   domain_id = col_character(),
+##   vocabulary_id = col_character(),
+##   concept_class_id = col_character(),
+##   standard_concept = col_character(),
+##   concept_code = col_character(),
+##   valid_start_date = col_double(),
+##   valid_end_date = col_double(),
+##   invalid_reason = col_character()
+## )
+vocabulary &lt;- read_tsv(&quot;VOCABULARY.csv&quot;)
+## Parsed with column specification:
+## cols(
+##   vocabulary_id = col_character(),
+##   vocabulary_name = col_character(),
+##   vocabulary_reference = col_character(),
+##   vocabulary_version = col_character(),
+##   vocabulary_concept_id = col_double()
+## )</code></pre>
+<p>Let’s take a quick look at the <code>vocabulary</code> table to see what concepts we can map to:</p>
+<pre class="r"><code>library(DT)
+
+datatable(vocabulary)</code></pre>
+<div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56"],["Metadata","Note Type","HCPCS","ICD9Proc","UB04 Pt dis status","ABMS","US Census","NUCC","Ethnicity","Concept Class","ICD10CM","Domain","Sponsor","Plan","Episode","Device Type","Vocabulary","Revenue Code","Race","Death Type","ICD9CM","OMOP Extension","UB04 Pri Typ of Adm","ATC","CDM","Cost Type","Drug Type","Relationship","Plan Stop Reason","LOINC","Visit","Obs Period Type","UCUM","CPT4","Condition Type","Visit Type","Cohort Type","NDC","SPL","UB04 Point of Origin","None","Medicare Specialty","Observation Type","Meas Type","Cost","UB04 Typ bill","PHDSC","CMS Place of Service","Procedure Type","OSM","Korean Revenue Code","Gender","Currency","SNOMED","RxNorm","RxNorm Extension"],["Metadata","OMOP Note Type","Healthcare Common Procedure Coding System (CMS)","International Classification of Diseases, Ninth Revision, Clinical Modification, Volume 3 (NCHS)","UB04 Patient Discharge Status Code (CMS)","Provider Specialty (American Board of Medical Specialties)","United States Census Bureau","National Uniform Claim Committee Health Care Provider Taxonomy Code Set (NUCC)","OMOP Ethnicity","OMOP Concept Class","International Classification of Diseases, Tenth Revision, Clinical Modification (NCHS)","OMOP Domain","Sponsor - institution or individual financing healthcare transactions","Health Plan - contract to administer healthcare transactions by the payer, facilitated by the sponsor","OMOP Episode","OMOP Device Type","OMOP Vocabulary","UB04/CMS1450 Revenue Codes (CMS)","Race and Ethnicity Code Set (USBC)","OMOP Death Type","International Classification of Diseases, Ninth Revision, Clinical Modification, Volume 1 and 2 (NCHS)","OMOP Extension","UB04 Claim Inpatient Admission Type Code (CMS)","WHO Anatomic Therapeutic Chemical Classification","OMOP Common DataModel","OMOP Cost Type","OMOP Drug Exposure Type","OMOP Relationship","Plan Stop Reason - Reason for termination of the Health Plan","Logical Observation Identifiers Names and Codes (Regenstrief Institute)","OMOP Visit","OMOP Observation Period Type","Unified Code for Units of Measure (Regenstrief Institute)","Current Procedural Terminology version 4 (AMA)","OMOP Condition Occurrence Type","OMOP Visit Type","OMOP Cohort Type","National Drug Code (FDA and manufacturers)","Structured Product Labeling (FDA)","UB04 Claim Source Inpatient Admission Code (CMS)","OMOP Standardized Vocabularies","Medicare provider/supplier specialty codes (CMS)","OMOP Observation Type","OMOP Measurement Type","OMOP Cost","UB04 Type of Bill - Institutional (USHIK)","Source of Payment Typology (PHDSC)","Place of Service Codes for Professional Claims (CMS)","OMOP Procedure Occurrence Type","OpenStreetMap","Korean Revenue Code","OMOP Gender","International Currency Symbol (ISO 4217)","Systematic Nomenclature of Medicine - Clinical Terms (IHTSDO)","RxNorm (NLM)","RxNorm Extension (OMOP)"],["OMOP generated","OMOP generated","http://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html","http://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes.html","https://www.resdac.org/cms-data/variables/patient-discharge-status-code","http://www.abms.org/member-boards/specialty-subspecialty-certificates","https://www.census.gov/geo/maps-data/data/tiger-cart-boundary.html","http://www.nucc.org/index.php?option=com_content&amp;view=article&amp;id=107&amp;Itemid=132","OMOP generated","OMOP generated","http://www.cdc.gov/nchs/icd/icd10cm.htm","OMOP generated","OMOP generated","OMOP generated","OMOP generated","OMOP generated","OMOP generated","http://www.mpca.net/?page=ERC_finance","http://www.cdc.gov/nchs/data/dvs/Race_Ethnicity_CodeSet.pdf","OMOP generated","http://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes.html","OMOP generated","https://www.resdac.org/cms-data/variables/Claim-Inpatient-Admission-Type-Code","http://www.whocc.no/atc_ddd_index/","https://github.com/OHDSI/CommonDataModel","OMOP generated","OMOP generated","OMOP generated","OMOP generated","http://loinc.org/downloads/loinc","OMOP generated","OMOP generated","http://aurora.regenstrief.org/~ucum/ucum.html#section-Alphabetic-Index","http://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html","OMOP generated","OMOP generated","OMOP generated","http://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html, http://www.fda.gov/downloads/Drugs/DevelopmentApprovalProcess/UCM070838.zip","http://www.fda.gov/Drugs/InformationOnDrugs/ucm142438.htm","https://www.resdac.org/cms-data/variables/Claim-Source-Inpatient-Admission-Code","OMOP generated","http://www.cms.gov/Medicare/Provider-Enrollment-and-Certification/MedicareProviderSupEnroll/Taxonomy.html","OMOP generated","OMOP generated","OMOP generated","https://ushik.ahrq.gov/ViewItemDetails?&amp;system=apcd&amp;itemKey=196987000","http://www.phdsc.org/standards/payer-typology-source.asp","http://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/PhysicianFeeSched/downloads//Website_POS_database.pdf","OMOP generated","https://www.openstreetmap.org/copyright/en, https://wambachers-osm.website/boundaries/","OMOP generated","OMOP generated","http://www.iso.org/iso/home/standards/currency_codes.htm","http://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html","http://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html","OMOP generated"],[null,null,"2020 Alpha Numeric HCPCS File","ICD9CM v32 master descriptions",null,"2018-06-26 ABMS","US Census 2017 Release","2018-06-26 NUCC",null,null,"ICD10CM FY2020 code descriptions",null,null,null,null,null,null,"2010 Release","Version 1.0",null,"ICD9CM v32 master descriptions","OMOP Extension 20200730",null,"RxNorm 20200504","CDM v6.0.0",null,null,null,null,"LOINC 2020-06-04",null,null,"Version 1.8.2","2020 Release",null,null,null,"NDC 20200802","NDC 20200802",null,"v5.0 07-AUG-20","2018-06-26 Specialty",null,null,null,null,"Version 3.0","2009-01-11",null,"OSM Release 2019-02-21",null,null,"2008","SNOMED 2020-04-01","RxNorm 20200504","RxNorm Extension 2020-07-31"],[32675,44819146,44819101,44819099,32047,45756746,32570,44819137,44819134,44819233,44819098,44819147,32472,32471,32523,44819151,44819232,44819133,44819109,44819135,5046,32758,32046,44819117,32485,5029,44819126,44819235,32474,44819102,44819119,44819149,44819107,44819100,44819127,44819150,44819234,44819105,44819140,32045,44819096,44819138,44819129,44819152,581457,32044,32473,44819110,44819128,32541,32724,44819108,44819153,44819097,44819104,252]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>vocabulary_id<\/th>\n      <th>vocabulary_name<\/th>\n      <th>vocabulary_reference<\/th>\n      <th>vocabulary_version<\/th>\n      <th>vocabulary_concept_id<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":5},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<div id="an-example-use-case" class="section level2">
+<h2>An Example Use Case</h2>
+<p>You now have a working OMOP CDM loaded into R! It’s small and synthetic, but it should be enough to get you familiar with relational EHR data.</p>
+<p>Here’s an example use case: Let’s get the top 10 most common SNOMED observations in our test data set. We’ll use <code>dplyr</code> for data wrangling.</p>
+<p>First, let’s join the <code>observation</code> table to the <code>concept</code> table and limit to <code>SNOMED</code> concepts.</p>
+<pre class="r"><code>library(dplyr)
+## 
+## Attaching package: &#39;dplyr&#39;
+## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union
+
+observation %&gt;%
+    select(person_id, observation_concept_id, observation_date) %&gt;%
+    mutate(concept_id = observation_concept_id) %&gt;%
+    left_join(concept, by=&quot;concept_id&quot;) %&gt;%
+    filter(vocabulary_id == &quot;SNOMED&quot;) -&gt;
+    snomed_obs
+
+nrow(snomed_obs)
+## [1] 12568</code></pre>
+<p>At this point we should ask a question that comes up a lot in clinical data analysis: do we want to consider unique observations, or the number of patients? That is, if a patient has duplicate SNOMED codes, should we count them multiple times? Let’s say no, we don’t want to double count patients, just to make this a bit more interesting:</p>
+<pre class="r"><code>snomed_obs %&gt;%
+    select(person_id, concept_id, concept_name) %&gt;%
+    distinct %&gt;%
+    count(concept_id, concept_name) %&gt;%
+    arrange(desc(n)) %&gt;%
+    head(n=10) -&gt;
+    top_10_snomed
+
+datatable(top_10_snomed)</code></pre>
+<div id="htmlwidget-2" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10"],[4015724,4214956,440927,4046550,440922,4167217,4058431,4186037,4059467,40479553],["Vaccination required","History of clinical finding in subject","High risk drug monitoring status","Postoperative care","Diabetic on insulin","Family history of clinical finding","H/O: artificial joint","Aftercare","H/O: artificial eye lens","Cardiac pacemaker in situ"],[642,623,513,325,252,249,241,233,200,159]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>concept_id<\/th>\n      <th>concept_name<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,3]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<p>And there you have it! It looks like ‘Vaccination Required’ is the most common SNOMED observation in this dataset. I hope to go more in depth about different data wrangling techniques in the future. Hopefully, this is enough to get you started.</p>
+</div>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+
+
+
+    
+<script src="/js/math-code.js"></script>
+<script async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+
+    
+  </body>
+</html>
+

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>R Markdown on A Hugo website</title>
-    <link>/tags/r-markdown/</link>
-    <description>Recent content in R Markdown on A Hugo website</description>
+    <title>R on A Hugo website</title>
+    <link>/tags/r/</link>
+    <description>Recent content in R on A Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 22 Sep 2020 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="/tags/r-markdown/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/tags/r/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -18,16 +18,6 @@
       
       <guid>/2020/09/22/how-to-create-a-test-omop-dataset-in-r/</guid>
       <description>IntroductionThe use of electronic health record (EHR) data is common and often necessary in clinical research. These data can be cumbersome and complicated, yet inaccessible due to privacy laws. My goal in this post is to set the reader up with a “fake” clinical dataset so that they can learn the ins and out of EHR data and feel more prepared when they encounter the real thing.</description>
-    </item>
-    
-    <item>
-      <title>Test Post</title>
-      <link>/2020/09/21/test-post/</link>
-      <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/21/test-post/</guid>
-      <description>This is a testYep. This is what it looks like. This line here is to test continuous integration.
-</description>
     </item>
     
   </channel>
