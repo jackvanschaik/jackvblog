@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+config.toml
+content/*
+index.Rmd
+jackvblog.Rproj
+static/*
+themes/*
