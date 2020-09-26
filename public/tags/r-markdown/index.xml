@@ -21,6 +21,15 @@
     </item>
     
     <item>
+      <title>Reproducible ICD Conversion With ATHENA and R</title>
+      <link>/2020/09/22/reproducible-icd-conversion-with-athena-and-r/</link>
+      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/2020/09/22/reproducible-icd-conversion-with-athena-and-r/</guid>
+      <description>Why Bother?If you work with diagnosis data, you’re likely to encounter ICD codes. ICD (Internal Classification of Diseases) is a globally used set codes that hierarchically classifies diagnoses, symptoms, and other clinical observations. Since the adoption of the Electronic Health Records (EHR), the primary revision of ICD in use ICD-9. At least, that was so until October 1st, 2015, when the United States made a nationwide switch to ICD-10.</description>
+    </item>
+    
+    <item>
       <title>Test Post</title>
       <link>/2020/09/21/test-post/</link>
       <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>

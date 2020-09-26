@@ -1,0 +1,251 @@
+---
+title: "Reproducible ICD Conversion With ATHENA and R"
+author: "Jack VanSchaik"
+date: 2020-09-22
+categories: ["R" , "EHR"]
+tags: ["R Markdown", "R", "OMOP", "ICD", "OHDSI", "tidyverse"]
+---
+
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/datatables-binding/datatables.js"></script>
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/dt-core/js/jquery.dataTables.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+
+
+<div id="why-bother" class="section level2">
+<h2>Why Bother?</h2>
+<p>If you work with diagnosis data, you’re likely to encounter ICD codes. ICD (Internal Classification of Diseases) is a globally used set codes that hierarchically classifies diagnoses, symptoms, and other clinical observations. Since the adoption of the Electronic Health Records (EHR), the primary revision of ICD in use ICD-9. At least, that was so until October 1st, 2015, when the United States made a nationwide switch to ICD-10.</p>
+<p>There are some benefits to using ICD-10. For example, it’s more specific. If you’re doing research however, you can encounter both coding systems in your data. Study periods that include October 1st 2015 will most likely include ICD-9 and ICD-10. This can be problematic for an analysis, so it’s often beneficial to convert one or the other ICD codes. This article walks through how to do that. Before we run through our methodology, why are we using it?</p>
+<ul>
+<li><p><strong>Reproducibility: </strong> Reproducibility is a pillar of good research. Sites like <a href="https://www.icd10data.com/">icd10data</a> can be a good reference, but copying and pasting codes from a website is prone to human error and rarely reproducible.</p></li>
+<li><p><strong>ATHENA: </strong> This is the OHDSI vocabulary repository, and includes ICD-9, ICD-10, and mapping between them. There are several ways to convert ICD codes– this happens to be my favorite because it’s open source, easy to understand, and plays nice with relational data. Not to mention, the OHDSI has an engaged community.</p></li>
+<li><p><strong>R : </strong> In order to be reproducible, we need to do conversions programmatically. A dataset may contain thousands of different ICD codes, making programmatic conversion the only option. R’s <code>tidyverse</code> makes using ATHENA very easy. In principle, creating a mapping table with ATHENA can and using it programmatically can be applied in other languages.</p></li>
+</ul>
+</div>
+<div id="step-1-get-the-athena-tables" class="section level2">
+<h2>Step 1: Get the Athena tables</h2>
+<p>First, follow the steps in <a href="https://web.jackv.xyz/2020/09/22/how-to-create-a-practice-omop-dataset-in-r/">this article</a> to download the ATHENA tables for ICD-9 and ICD-10. We’ll be using the <a href="https://github.com/OHDSI/CommonDataModel/wiki/CONCEPT">CONCEPT</a> and <a href="https://github.com/OHDSI/CommonDataModel/wiki/CONCEPT_RELATIONSHIP">CONCEPT_RELATIONSHIP</a> tables. (Links to documention on the <a href="https://github.com/OHDSI/CommonDataModel">OHDSI Wiki</a>)</p>
+</div>
+<div id="step-2-create-the-mapping-table" class="section level2">
+<h2>Step 2: Create the Mapping Table</h2>
+<div id="load-the-athena-tables-into-r" class="section level4">
+<h4>Load the ATHENA Tables into R</h4>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## -- Attaching packages ----------------------------------------------------------------------------------------------------------------------- tidyverse 1.3.0 --</code></pre>
+<pre><code>## v ggplot2 3.3.2     v purrr   0.3.4
+## v tibble  3.0.3     v dplyr   1.0.2
+## v tidyr   1.1.1     v stringr 1.4.0
+## v readr   1.3.1     v forcats 0.5.0</code></pre>
+<pre><code>## -- Conflicts -------------------------------------------------------------------------------------------------------------------------- tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>concept &lt;- read_tsv(&quot;C:/Users/Jack/Documents/data/vocabulary_download_v5/CONCEPT.csv&quot;, quote=&quot;&quot;)</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   concept_id = col_double(),
+##   concept_name = col_character(),
+##   domain_id = col_character(),
+##   vocabulary_id = col_character(),
+##   concept_class_id = col_character(),
+##   standard_concept = col_character(),
+##   concept_code = col_character(),
+##   valid_start_date = col_double(),
+##   valid_end_date = col_double(),
+##   invalid_reason = col_character()
+## )</code></pre>
+<pre class="r"><code>concept_relationship &lt;- read_tsv(&quot;C:/Users/Jack/Documents/data/vocabulary_download_v5/CONCEPT_RELATIONSHIP.csv&quot;, quote=&quot;&quot;)</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   concept_id_1 = col_double(),
+##   concept_id_2 = col_double(),
+##   relationship_id = col_character(),
+##   valid_start_date = col_double(),
+##   valid_end_date = col_double(),
+##   invalid_reason = col_logical()
+## )</code></pre>
+</div>
+<div id="link-concept-ids-to-code-names" class="section level4">
+<h4>Link concept ids to code names</h4>
+<p>The concepts from ATHENA are all mapped to an internal <code>concept_id</code>. We’ll need to map these to our ICD-9 and ICD-10 code names</p>
+<pre class="r"><code>concept %&gt;%
+    filter(vocabulary_id == &quot;ICD9CM&quot;) %&gt;%
+    select(
+        icd9_concept_id = concept_id, 
+        icd9_name=concept_name, 
+        icd9_code=concept_code
+    ) -&gt;
+    icd_9_concepts
+
+concept %&gt;%
+    filter(vocabulary_id == &quot;ICD10CM&quot;) %&gt;%
+    select(
+        icd10_concept_id=concept_id, 
+        icd10_name=concept_name, 
+        icd10_code=concept_code
+    ) -&gt;
+    icd_10_concepts</code></pre>
+</div>
+<div id="map-the-code-systems-via-concept_relationship" class="section level4">
+<h4>Map the code systems via CONCEPT_RELATIONSHIP</h4>
+<p>Each row in the <code>CONCEPT_RELATIONSHIP</code> tables represent a concept mapping. Mappings should be read as <code>concept_id_1</code> <code>relationship_id</code> <code>concept_id_2</code>. See below:</p>
+<pre class="r"><code>DT::datatable(head(concept_relationship))</code></pre>
+<div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[46070691,46070692,46070696,46070697,46070703,46070705],[46070691,46070692,46070696,46070697,46070703,46070705],["Mapped from","Mapped from","Mapped from","Mapped from","Mapped from","Mapped from"],[20180731,20180731,20180731,20180731,20180731,20180731],[20991231,20991231,20991231,20991231,20991231,20991231],[null,null,null,null,null,null]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>concept_id_1<\/th>\n      <th>concept_id_2<\/th>\n      <th>relationship_id<\/th>\n      <th>valid_start_date<\/th>\n      <th>valid_end_date<\/th>\n      <th>invalid_reason<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,2,4,5]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<p>ATHENA doesn’t have a direct mapping between ICD-9 and ICD-10, so we’ll need to do an intermediate mapping between the ICD code systems and ATHENA’s standard vocabulary for diagnoses: SNOMED. This involves a few relational joins, so we can use <code>dplyr</code> here:</p>
+<pre class="r"><code>#First, lets modify concept_relationship to includes vocabulary_ids
+
+concept_relationship %&gt;%
+    select(concept_id_1, relationship_id, concept_id_2) %&gt;%
+    left_join(concept, by=c(&quot;concept_id_1&quot; = &quot;concept_id&quot;)) %&gt;%
+    select(concept_id_1, vocabulary_id_1 = vocabulary_id, relationship_id, concept_id_2) %&gt;%
+    left_join(concept, by=c(&quot;concept_id_2&quot; = &quot;concept_id&quot;)) %&gt;%
+    select(concept_id_1, vocabulary_id_1, relationship_id, concept_id_2,
+           vocabulary_id_2 = vocabulary_id) -&gt;
+    concept_relationship
+
+# Next, create the map from ICD 10 to SNOMED
+concept_relationship %&gt;%
+    filter(vocabulary_id_1 == &quot;ICD10CM&quot;) %&gt;%
+    filter(vocabulary_id_2 == &quot;SNOMED&quot;) %&gt;%
+    filter(relationship_id == &quot;Maps to&quot;) %&gt;%
+    select(
+        icd10_concept_id = concept_id_1,
+        snomed_concept_id = concept_id_2
+    ) -&gt;
+    icd10_to_snomed
+
+# Then, the SNOMED to ICD 9 Map
+concept_relationship %&gt;%
+    filter(vocabulary_id_1 == &quot;ICD9CM&quot;) %&gt;%
+    filter(vocabulary_id_2 == &quot;SNOMED&quot;) %&gt;%
+    filter(relationship_id == &quot;Maps to&quot;) %&gt;%
+    select(
+        icd9_concept_id = concept_id_1,
+        snomed_concept_id = concept_id_2
+    ) -&gt;
+    icd9_to_snomed
+
+# Combine everything together
+icd_10_concepts %&gt;%
+    inner_join(icd10_to_snomed, by=&quot;icd10_concept_id&quot;) %&gt;%
+    inner_join(icd9_to_snomed, by=&quot;snomed_concept_id&quot;) %&gt;%
+    inner_join(icd_9_concepts, by=&quot;icd9_concept_id&quot;) %&gt;%
+    select(icd10_code, icd9_code, icd10_name, icd9_name) -&gt;
+    icd10_to_icd9</code></pre>
+</div>
+</div>
+<div id="step-3-futher-considerations" class="section level2">
+<h2>Step 3: Futher considerations</h2>
+<p>You now have a mapping table (<code>icd10_to_icd9</code>) that you can use to convert between code systems.</p>
+<pre class="r"><code>DT::datatable(head(icd10_to_icd9, n=50))</code></pre>
+<div id="htmlwidget-2" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50"],["T25.511S","T25.511S","T25.511S","T25.511S","V91.81XS","V91.81XS","V91.81XS","V92.11XS","V92.11XS","V92.11XS","V92.14XS","V92.14XS","V92.14XS","V92.26XS","V92.26XS","V92.26XS","V93.02XS","V93.02XS","V93.02XS","V93.43XS","V93.43XS","V93.43XS","V94.12XS","V94.12XS","V94.12XS","V95.14XS","V95.14XS","V95.14XS","V96.25XS","V96.25XS","V96.25XS","V97.0XXS","V97.0XXS","V97.0XXS","V97.1XXS","V97.1XXS","V97.1XXS","M13.869","M13.869","M13.869","M13.869","M13.869","M13.869","M13.869","M13.869","M13.869","M19.021","M19.022","M19.049","M19.232"],["906.5","906.9","906.8","906.7","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","E929","E929.8","E929.9","716.66","711.46","711.86","711.26","711.36","711.76","712.16","711.66","712.26","715.12","715.12","715.14","715.23"],["Corrosion of first degree of right ankle, sequela","Corrosion of first degree of right ankle, sequela","Corrosion of first degree of right ankle, sequela","Corrosion of first degree of right ankle, sequela","Other injury due to other accident to passenger ship, sequela","Other injury due to other accident to passenger ship, sequela","Other injury due to other accident to passenger ship, sequela","Drowning and submersion due to being thrown overboard by motion of passenger ship, sequela","Drowning and submersion due to being thrown overboard by motion of passenger ship, sequela","Drowning and submersion due to being thrown overboard by motion of passenger ship, sequela","Drowning and submersion due to being thrown overboard by motion of sailboat, sequela","Drowning and submersion due to being thrown overboard by motion of sailboat, sequela","Drowning and submersion due to being thrown overboard by motion of sailboat, sequela","Drowning and submersion due to being washed overboard from (nonpowered) inflatable craft, sequela","Drowning and submersion due to being washed overboard from (nonpowered) inflatable craft, sequela","Drowning and submersion due to being washed overboard from (nonpowered) inflatable craft, sequela","Burn due to localized fire on board fishing boat, sequela","Burn due to localized fire on board fishing boat, sequela","Burn due to localized fire on board fishing boat, sequela","Struck by falling object on other powered watercraft, sequela","Struck by falling object on other powered watercraft, sequela","Struck by falling object on other powered watercraft, sequela","Bather struck by nonpowered watercraft, sequela","Bather struck by nonpowered watercraft, sequela","Bather struck by nonpowered watercraft, sequela","Ultralight, microlight or powered-glider fire injuring occupant, sequela","Ultralight, microlight or powered-glider fire injuring occupant, sequela","Ultralight, microlight or powered-glider fire injuring occupant, sequela","Glider (nonpowered) explosion injuring occupant, sequela","Glider (nonpowered) explosion injuring occupant, sequela","Glider (nonpowered) explosion injuring occupant, sequela","Occupant of aircraft injured in other specified air transport accidents, sequela","Occupant of aircraft injured in other specified air transport accidents, sequela","Occupant of aircraft injured in other specified air transport accidents, sequela","Person injured while boarding or alighting from aircraft, sequela","Person injured while boarding or alighting from aircraft, sequela","Person injured while boarding or alighting from aircraft, sequela","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Other specified arthritis, unspecified knee","Primary osteoarthritis, right elbow","Primary osteoarthritis, left elbow","Primary osteoarthritis, unspecified hand","Secondary osteoarthritis, left wrist"],["Late effect of burn of eye, face, head, and neck","Late effect of burn of unspecified site","Late effect of burns of other specified sites","Late effect of burn of other extremities","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Late effects of accidental injury","Late effects of other accidents","Late effects of unspecified accident","Unspecified monoarthritis, lower leg","Arthropathy associated with other bacterial diseases, lower leg","Arthropathy associated with other infectious and parasitic diseases, lower leg","Arthropathy in Behcet's syndrome, lower leg","Postdysenteric arthropathy, lower leg","Arthropathy associated with helminthiasis, lower leg","Chondrocalcinosis, due to dicalcium phosphate crystals, lower leg","Arthropathy associated with mycoses, lower leg","Chondrocalcinosis, due to pyrophosphate crystals, lower leg","Osteoarthrosis, localized, primary, upper arm","Osteoarthrosis, localized, primary, upper arm","Osteoarthrosis, localized, primary, hand","Osteoarthrosis, localized, secondary, forearm"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>icd10_code<\/th>\n      <th>icd9_code<\/th>\n      <th>icd10_name<\/th>\n      <th>icd9_name<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>
+<p>For the sake of this reproducibility save this table as an RDS or csv. When it comes time to use it, you can load back in and join to it with dplyr, programmatically converting the codes.</p>
+<p>Note there isn’t always a one-to-one mapping between code systems.</p>
+<p>At this point, you’ll need to think critically about the implications of mappings in your own dataset. There might be some situations where a many-to-many mapping is fine: e.g., you want to see if a patient has <em>any</em> diagnoses for a certain disease. There may be cases where a mapping should be more fine grained. Remember no mapping isn’t perfect. ICD-10 is pretty much an overhaul of ICD-9 in the first place. While mapping is sometimes a necessity, it will have deficiencies that should be carefully considered.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-09-25                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blob          1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  broom         0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cellranger    1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  colorspace    1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  crosstalk     1.1.0.1 2020-03-13 [1] CRAN (R 4.0.2)
+##  DBI           1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##  dbplyr        1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr       * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  DT            0.15    2020-08-05 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  forcats     * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics      0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  ggplot2     * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  gtable        0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##  haven         2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##  hms           0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  htmlwidgets   1.5.1   2019-10-08 [1] CRAN (R 4.0.2)
+##  httr          1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle     0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate     1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  modelr        0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##  munsell       0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##  pillar        1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr       * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs      0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr       * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  readxl        1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reprex        0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##  reticulate    1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang         0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  rvest         0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##  scales        1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr     * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble      * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr       * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect    1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  tidyverse   * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs         0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  xml2          1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>

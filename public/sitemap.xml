@@ -58,6 +58,11 @@
   </url>
   
   <url>
+    <loc>/tags/icd/</loc>
+    <lastmod>2020-09-22T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
     <loc>/tags/ohdsi/</loc>
     <lastmod>2020-09-22T00:00:00+00:00</lastmod>
   </url>
@@ -84,6 +89,11 @@
   
   <url>
     <loc>/tags/r-markdown/</loc>
+    <lastmod>2020-09-22T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/2020/09/22/reproducible-icd-conversion-with-athena-and-r/</loc>
     <lastmod>2020-09-22T00:00:00+00:00</lastmod>
   </url>
   
