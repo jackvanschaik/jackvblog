@@ -6,7 +6,7 @@
     <description>Recent content in Categories on A Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 22 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 25 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/categories/index.xml" rel="self" type="application/rss+xml" />
     
@@ -14,9 +14,18 @@
     <item>
       <title>EHR</title>
       <link>/categories/ehr/</link>
-      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
+      <pubDate>Fri, 25 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/categories/ehr/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>R</title>
+      <link>/categories/r/</link>
+      <pubDate>Fri, 25 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/categories/r/</guid>
       <description></description>
     </item>
     
@@ -35,15 +44,6 @@
       <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/categories/howto/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>R</title>
-      <link>/categories/r/</link>
-      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/categories/r/</guid>
       <description></description>
     </item>
     

@@ -1,7 +1,7 @@
 ---
 title: "Reproducible ICD Conversion With ATHENA and R"
 author: "Jack VanSchaik"
-date: 2020-09-22
+date: 2020-09-25
 categories: ["R" , "EHR"]
 tags: ["R Markdown", "R", "OMOP", "ICD", "OHDSI", "tidyverse"]
 ---
@@ -20,7 +20,7 @@ There are some benefits to using ICD-10. For example, it's more specific. If you
 
 * __ATHENA: __ This is the OHDSI vocabulary repository, and includes ICD-9, ICD-10, and mapping between them. There are several ways to convert ICD codes-- this happens to be my favorite because it's open source, easy to understand, and plays nice with relational data. Not to mention, the OHDSI has an engaged community.
 
-* __R : __ In order to be reproducible, we need to do conversions programmatically. A dataset may contain thousands of different ICD codes, making programmatic conversion the only option. R's `tidyverse` makes using ATHENA very easy. In principle, creating a mapping table with ATHENA can and using it programmatically can be applied in other languages.
+* __R : __ In order to be reproducible, we need to do conversions programmatically. A dataset may contain thousands of different ICD codes, making programmatic conversion the only option. R's `tidyverse` makes using ATHENA very easy. In principle, creating a mapping table with ATHENA can and using it programmatically can be applied in other languages. 
 
 ## Step 1: Get the Athena tables
 
