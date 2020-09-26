@@ -8,12 +8,15 @@
 
 <title>Reproducible ICD Conversion With ATHENA and R - A Hugo website</title>
 <meta property="og:title" content="Reproducible ICD Conversion With ATHENA and R - A Hugo website">
+<meta property="og:description" content="Convert between ICD-9 and ICD-10 with open source tools">
 
 
   <link href='/favicon.ico' rel='icon' type='image/x-icon'/>
 
 
 
+  
+  <meta property="description" content="Convert between ICD-9 and ICD-10 with open source tools">
   
 
 
@@ -31,6 +34,15 @@
 <link rel="stylesheet" href="/css/main.css" media="all">
 
 
+
+<meta name="twitter:creator" content="@VanSchaikJack">
+<meta name="twitter:site" content="@VanSchaikJack">
+
+
+  
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://web.jackv.xyz//images/icd_twitter.JPG" >
+  
 
   </head>
   <body>
@@ -103,12 +115,12 @@
 <div id="load-the-athena-tables-into-r" class="section level4">
 <h4>Load the ATHENA Tables into R</h4>
 <pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## -- Attaching packages -------------------------------------------------------------------------------- tidyverse 1.3.0 --</code></pre>
+<pre><code>## -- Attaching packages --------------------------------------------------------------------------------------------------- tidyverse 1.3.0 --</code></pre>
 <pre><code>## v ggplot2 3.3.2     v purrr   0.3.4
 ## v tibble  3.0.3     v dplyr   1.0.2
 ## v tidyr   1.1.1     v stringr 1.4.0
 ## v readr   1.3.1     v forcats 0.5.0</code></pre>
-<pre><code>## -- Conflicts ----------------------------------------------------------------------------------- tidyverse_conflicts() --
+<pre><code>## -- Conflicts ------------------------------------------------------------------------------------------------------ tidyverse_conflicts() --
 ## x dplyr::filter() masks stats::filter()
 ## x dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>concept &lt;- read_tsv(&quot;C:/Users/Jack/Documents/data/vocabulary_download_v5/CONCEPT.csv&quot;, quote=&quot;&quot;)</code></pre>

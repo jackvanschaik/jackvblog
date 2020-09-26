@@ -1,9 +1,11 @@
 ---
 title: "Reproducible ICD Conversion With ATHENA and R"
 author: "Jack VanSchaik"
+description: "Convert between ICD-9 and ICD-10 with open source tools"
 date: 2020-09-25
 categories: ["R" , "EHR"]
 tags: ["R Markdown", "R", "OMOP", "ICD", "OHDSI", "tidyverse"]
+twitterImg: /images/icd_twitter.JPG
 ---
 
 ```{r setup, include=FALSE}

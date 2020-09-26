@@ -4,6 +4,7 @@ author: "Jack VanSchaik"
 date: 2020-09-21
 categories: ["R"]
 tags: ["R Markdown"]
+twitterImg: /IMG_8052.jpg
 ---
 
 ```{r setup, include=FALSE}
