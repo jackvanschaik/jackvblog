@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>R Markdown on A Hugo website</title>
+    <title>R Markdown on Jack&#39;s Blog</title>
     <link>/tags/r-markdown/</link>
-    <description>Recent content in R Markdown on A Hugo website</description>
+    <description>Recent content in R Markdown on Jack&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 25 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 28 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/r-markdown/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>DT::datatable seasoned with javascript</title>
+      <link>/2020/09/28/dtdatatable-seasoned-with-javascript/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/2020/09/28/dtdatatable-seasoned-with-javascript/</guid>
+      <description>/* This will get a row ID via our data table and modify a bunch of HTML based on that row */chop = function(id) {var row = chopped[id];document.getElementById(&#34;episode_name&#34;).innerHTML = row[&#34;episode_name&#34;] + &#34;: &#34; + row[&#34;air_date&#34;];document.getElementById(&#34;episode_notes&#34;).innerHTML = row[&#34;episode_notes&#34;];document.getElementById(&#34;judge1&#34;).innerHTML = row[&#34;judge1&#34;];document.getElementById(&#34;judge2&#34;).innerHTML = row[&#34;judge2&#34;];document.getElementById(&#34;judge3&#34;).innerHTML = row[&#34;judge3&#34;];document.getElementById(&#34;appetizer&#34;).innerHTML = row[&#34;appetizer&#34;];document.getElementById(&#34;entree&#34;).innerHTML = row[&#34;entree&#34;];document.getElementById(&#34;dessert&#34;).innerHTML = row[&#34;dessert&#34;];document.getElementById(&#34;chef1&#34;).innerHTML = row[&#34;contestant1&#34;] + &#34;: &#34;</description>
+    </item>
     
     <item>
       <title>Reproducible ICD Conversion With ATHENA and R</title>
