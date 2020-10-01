@@ -6,10 +6,20 @@
     <description>Recent content in R Markdown on Jack&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 28 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 29 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/tags/r-markdown/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Tidy Tuesday 9-29-2020</title>
+      <link>/2020/09/29/tidy-tuesday-9-29-2020/</link>
+      <pubDate>Tue, 29 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/2020/09/29/tidy-tuesday-9-29-2020/</guid>
+      <description>Load Packagesbeyonce: Load Beyonce themed color palettesgridExtra: To arrange visualizationsknitr: For nice data frame printingrvest: For webscrapingscales: To help with plotstidytext: To do text processingtidyverse: For data cleaning and plottingtidytuesdayR: To load the Tidy Tuesday datalibrary(beyonce)library(gridExtra)library(knitr)library(rvest)library(scales)library(tidytext)library(tidytuesdayR)library(tidyverse)Load DataFollowing the instructions on the Tidy Tuesday Github:
+tuesdata &amp;lt;- tidytuesdayR::tt_load(&amp;#39;2020-09-29&amp;#39;)## --- Compiling #TidyTuesday Information for 2020-09-29 ----## --- There are 4 files available ---## --- Starting Download ---## ## Downloading file 1 of 4: `beyonce_lyrics.</description>
+    </item>
     
     <item>
       <title>DT::datatable seasoned with javascript</title>

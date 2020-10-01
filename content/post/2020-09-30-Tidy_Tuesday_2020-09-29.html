@@ -1,0 +1,335 @@
+---
+title: "Tidy Tuesday 9-29-2020"
+author: "Jack VanSchaik"
+description: "Which words are worth the most?"
+date: 2020-09-29
+categories: ["TidyTuesday"]
+tags: ["R Markdown", "R", "TidyTuesday", "Tidyverse"]
+twitterImg: /images/beyonce.png
+---
+
+
+
+<div id="load-packages" class="section level2">
+<h2>Load Packages</h2>
+<ul>
+<li><code>beyonce</code>: Load <a href="https://github.com/dill/beyonce">Beyonce themed color palettes</a></li>
+<li><code>gridExtra</code>: To arrange visualizations</li>
+<li><code>knitr</code>: For nice data frame printing</li>
+<li><code>rvest</code>: For webscraping</li>
+<li><code>scales</code>: To help with plots</li>
+<li><code>tidytext</code>: To do text processing</li>
+<li><code>tidyverse</code>: For data cleaning and plotting</li>
+<li><code>tidytuesdayR</code>: To load the Tidy Tuesday data</li>
+</ul>
+<pre class="r"><code>library(beyonce)
+library(gridExtra)
+library(knitr)
+library(rvest)
+library(scales)
+library(tidytext)
+library(tidytuesdayR)
+library(tidyverse)</code></pre>
+</div>
+<div id="load-data" class="section level2">
+<h2>Load Data</h2>
+<p>Following the instructions on the <a href="https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-29/readme.md">Tidy Tuesday Github</a>:</p>
+<pre class="r"><code>tuesdata &lt;- tidytuesdayR::tt_load(&#39;2020-09-29&#39;)</code></pre>
+<pre><code>## --- Compiling #TidyTuesday Information for 2020-09-29 ----</code></pre>
+<pre><code>## --- There are 4 files available ---</code></pre>
+<pre><code>## --- Starting Download ---</code></pre>
+<pre><code>## 
+##  Downloading file 1 of 4: `beyonce_lyrics.csv`
+##  Downloading file 2 of 4: `taylor_swift_lyrics.csv`
+##  Downloading file 3 of 4: `sales.csv`
+##  Downloading file 4 of 4: `charts.csv`</code></pre>
+<pre><code>## --- Download complete ---</code></pre>
+<p>I’ll put the tables in my global environment:</p>
+<pre class="r"><code>beyonce_lyrics &lt;- tuesdata$beyonce_lyrics
+taylor_swift_lyrics &lt;- tuesdata$taylor_swift_lyrics
+sales &lt;- tuesdata$sales
+charts &lt;- tuesdata$charts</code></pre>
+</div>
+<div id="whats-the-value-of-a-lyric" class="section level2">
+<h2>What’s the Value of a Lyric?</h2>
+<p>There’s no way to really know this for certain. We can simplify things a little by assuming each word in an album contributes equally to the value it generates, and by further assuming the value of each song is determined completely by its lyrics. We’ll ignore common grammatical words (stopwords) in this analysis, as those are pretty universal.</p>
+<div id="make-a-text-cleaning-function" class="section level4">
+<h4>Make a text cleaning function</h4>
+<p>Since we’ll be cleaning text in a few different place, let’s make a function to standardize this:</p>
+<pre class="r"><code>clean_tokens &lt;- function(tokens) {
+    tokens %&gt;%
+        tolower() %&gt;%
+        str_replace_all(&quot;[^[\\w[[:space:]]]]+&quot;, &quot;&quot;) %&gt;%
+        str_squish() -&gt;
+        tokens_clean
+    
+    tokens_clean
+}</code></pre>
+</div>
+<div id="tidy-the-song-lyrics" class="section level4">
+<h4>Tidy the song lyrics</h4>
+<p>The <code>tidytext</code> format means using one word per row. Let’s clean up the lyrics tables for each of the singers. To do this, we’ll need to use <code>unnest_tokens</code> from the <code>tidytext</code> package.</p>
+<p>For each set of lyrics, we’ll do the following cleaning steps:</p>
+<ul>
+<li>Unnest tokens and lowercase</li>
+<li>Clean text</li>
+<li>Remove stopwords</li>
+</ul>
+<p>First, let’s define our stopwords as those in <code>tidytexts</code>’s <code>stop_words</code> in the <code>snowball</code> lexicon. We’ll remove punctuation to match with our text cleaning.</p>
+<pre class="r"><code>stop_words %&gt;%
+    filter(lexicon == &quot;snowball&quot;) %&gt;%
+    mutate(word = clean_tokens(word)) %&gt;%
+    pull(word) -&gt;
+    lyric_stop_words
+
+head(lyric_stop_words)</code></pre>
+<pre><code>## [1] &quot;i&quot;      &quot;me&quot;     &quot;my&quot;     &quot;myself&quot; &quot;we&quot;     &quot;our&quot;</code></pre>
+<p>Cleaning Beyonce’s lyrics:</p>
+<pre class="r"><code>beyonce_lyrics %&gt;%
+    select(artist_name, song_name, line) %&gt;%
+    unnest_tokens(words, line) %&gt;%
+    mutate(
+        words = clean_tokens(words),
+        song_name = clean_tokens(song_name)
+    ) %&gt;%
+    filter(!(words %in% lyric_stop_words)) -&gt;
+    beyonce_tidytext</code></pre>
+<p>Cleaning Taylor’s lyrics. I had an issue with column names so I used <code>janitor</code> to clean them.</p>
+<pre class="r"><code>taylor_swift_lyrics %&gt;%
+    janitor::clean_names() %&gt;%
+    select(artist_name=artist, song_name=title, album, lyrics) %&gt;%
+    unnest_tokens(words, lyrics) %&gt;%
+    mutate(
+        words = clean_tokens(words),
+        song_name = clean_tokens(song_name),
+        album = clean_tokens(album)
+    ) %&gt;%
+    filter(!(words %in% lyric_stop_words)) -&gt;
+    taylor_tidytext</code></pre>
+</div>
+<div id="get-album-names-for-beyonces-songs" class="section level4">
+<h4>Get Album Names for Beyonce’s songs</h4>
+<p>The <code>beyonce_lyrics</code> table we got from <code>tidytuesdayR</code> doesn’t include album names.</p>
+<p>We can scrape those from wikipedia, similar to what we saw in the cleaning script. We’ll have to do some cleaning</p>
+<pre class="r"><code>bey_url &lt;- &quot;https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Beyonc%C3%A9&quot;
+bey_html &lt;- read_html(bey_url)
+
+bey_html %&gt;%
+    html_node(xpath = &quot;/html/body/div[3]/div[3]/div[5]/div[1]/table[2]&quot;) %&gt;% 
+    html_table(fill = TRUE) %&gt;% 
+    tibble %&gt;%
+    janitor::clean_names() %&gt;%
+    transmute(artist_name=&quot;Beyoncé&quot;, song_name = song, album = originating_album_note_1) %&gt;%
+    mutate(song_name = str_replace_all(song_name, &quot;\\[[\\w ]+\\]&quot;, &quot;&quot;)) %&gt;%
+    mutate(
+        song_name = clean_tokens(song_name),
+        album = clean_tokens(album)
+    ) -&gt;
+    bey_albums</code></pre>
+</div>
+<div id="match-each-song-to-its-sales-value" class="section level4">
+<h4>Match each song to it’s sales value</h4>
+<p>First, let’s limit to US sales so we’re comparing apples to apples. Let’s also clean album names.</p>
+<pre class="r"><code>sales %&gt;%
+    filter(country == &quot;US&quot;) %&gt;%
+    transmute(
+        artist_name = artist,
+        album = clean_tokens(title),
+        sales
+    ) -&gt;
+    sales_2</code></pre>
+<p>Now let’s join each lyric to it’s album worth. First, Beyonce. We’ll remove any albums without sales data:</p>
+<pre class="r"><code>beyonce_tidytext %&gt;%
+    left_join(bey_albums, by=c(&quot;artist_name&quot;, &quot;song_name&quot;)) %&gt;%
+    left_join(sales_2, by=c(&quot;artist_name&quot;, &quot;album&quot;)) %&gt;%
+    filter(!is.na(sales)) -&gt;
+    bey_joined</code></pre>
+<p>Next, Taylor</p>
+<pre class="r"><code>taylor_tidytext %&gt;%
+    left_join(sales_2, by=c(&quot;artist_name&quot;, &quot;album&quot;)) %&gt;%
+    filter(!is.na(sales)) -&gt;
+    taylor_joined</code></pre>
+<p>Finally, let’s union the tables together</p>
+<pre class="r"><code>lyrics_joined &lt;- bind_rows(bey_joined, taylor_joined)</code></pre>
+</div>
+<div id="create-a-value-for-each-word" class="section level4">
+<h4>Create a value for each word</h4>
+<p>Again, we’ll divide the worth of an album among all it’s words. If a word appears multiple times and/or across multiple albums, we’ll add the total values up.</p>
+<pre class="r"><code>lyrics_joined %&gt;%
+    group_by(artist_name, album) %&gt;%
+    mutate(total_words = length(words)) %&gt;%
+    mutate(word_value = sales/total_words) %&gt;%
+    group_by(artist_name, words) %&gt;%
+    summarise(total_word_value = sum(word_value)) -&gt;
+    word_values</code></pre>
+<pre><code>## `summarise()` regrouping output by &#39;artist_name&#39; (override with `.groups` argument)</code></pre>
+</div>
+</div>
+<div id="visualization" class="section level2">
+<h2>Visualization</h2>
+<p>Now that we finally have our word values, let’s visualize!</p>
+<div id="top-15-most-valuable-words-for-each-artist" class="section level4">
+<h4>Top 15 most valuable words for each artist</h4>
+<pre class="r"><code>word_values %&gt;%
+    group_by(artist_name) %&gt;%
+    arrange(artist_name, desc(total_word_value)) %&gt;%
+    filter(row_number() &lt; 15) -&gt;
+    top_15</code></pre>
+<p>Create a theme based on the <code>beyonce</code> package:</p>
+<pre class="r"><code>bey_theme &lt;- function(N) {
+    theme(legend.position = &quot;none&quot;, 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
+          plot.background = element_rect(fill = beyonce_palette(N)[5]),
+          panel.background = element_rect(fill = beyonce_palette(N)[4], colour = beyonce_palette(N)[4]),
+          panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank(),
+          panel.grid.major.x = element_line(color = beyonce_palette(N)[3], linetype=3),
+          panel.grid.minor.x = element_blank(),
+          text = element_text(color=beyonce_palette(N)[1], family = &quot;sans&quot;),
+          rect = element_rect(color=beyonce_palette(N)[2]),
+          title = element_text(color=beyonce_palette(N)[1])
+          )
+}</code></pre>
+<pre class="r"><code>plot_1 &lt;- top_15 %&gt;% 
+    filter(artist_name==&quot;Beyoncé&quot;) %&gt;%
+    arrange(total_word_value) %&gt;%
+    mutate(words=factor(words, levels=words)) %&gt;%
+    ggplot(aes(x=words, y=total_word_value, label=words)) + 
+    geom_bar(stat=&quot;identity&quot;, color = beyonce_palette(50)[1], fill = beyonce_palette(50)[1]) +
+    geom_text(nudge_y = 50000, color = beyonce_palette(50)[1]) + 
+    coord_flip() + 
+    labs(title=&quot;Beyoncé&#39;s Most Valuable Words&quot;, y=&quot;Total Word Value&quot;, x=&quot;Top 15 Most Valuable Words&quot;) +
+    scale_y_continuous(labels = comma, limits = c(0, 600000)) + 
+    bey_theme(50)
+
+plot_2 &lt;- top_15 %&gt;% 
+    filter(artist_name==&quot;Taylor Swift&quot;) %&gt;%
+    arrange(total_word_value) %&gt;%
+    mutate(words=factor(words, levels=words)) %&gt;%
+    ggplot(aes(x=words, y=total_word_value, label=words)) + 
+    geom_bar(stat=&quot;identity&quot;, color = beyonce_palette(50)[1], fill = beyonce_palette(50)[1]) +
+    geom_text(nudge_y = 50000, color = beyonce_palette(50)[1]) + 
+    coord_flip() +
+    labs(title=&quot;Taylor Swift&#39;s Most Valuable Words&quot;, y=&quot;Total Word Value&quot;, x=&quot;&quot;) + 
+    scale_y_continuous(labels = comma, limits = c(0, 600000)) + 
+    bey_theme(50)
+
+grid.arrange(plot_1, plot_2, ncol=2)</code></pre>
+<p><img src="/post/2020-09-30-Tidy_Tuesday_2020-09-29_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>Looks like they have the same top three most valuable words! In a way, this is almost a surrogate for most popular words. There are still some interesting differences and similarities</p>
+</div>
+</div>
+<div id="acknowldegements" class="section level2">
+<h2>Acknowldegements</h2>
+<p>Thanks to Rosie Baillie and Dr. Sara Stoudt for putting this weeks data together. Thanks to the Tidy Tuesday team and package developers for making this possible.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-09-30                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package      * version date       lib source                       
+##  assertthat     0.2.1   2019-03-21 [1] CRAN (R 4.0.2)               
+##  backports      1.1.7   2020-05-13 [1] CRAN (R 4.0.0)               
+##  beyonce      * 0.1     2020-09-30 [1] Github (dill/beyonce@d0a5316)
+##  blob           1.2.1   2020-01-20 [1] CRAN (R 4.0.2)               
+##  blogdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)               
+##  bookdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)               
+##  broom          0.7.0   2020-07-09 [1] CRAN (R 4.0.2)               
+##  callr          3.4.3   2020-03-28 [1] CRAN (R 4.0.2)               
+##  cellranger     1.1.0   2016-07-27 [1] CRAN (R 4.0.2)               
+##  cli            2.0.2   2020-02-28 [1] CRAN (R 4.0.2)               
+##  colorspace     1.4-1   2019-03-18 [1] CRAN (R 4.0.2)               
+##  crayon         1.3.4   2017-09-16 [1] CRAN (R 4.0.2)               
+##  curl           4.3     2019-12-02 [1] CRAN (R 4.0.2)               
+##  DBI            1.1.0   2019-12-15 [1] CRAN (R 4.0.2)               
+##  dbplyr         1.4.4   2020-05-27 [1] CRAN (R 4.0.2)               
+##  desc           1.2.0   2018-05-01 [1] CRAN (R 4.0.2)               
+##  devtools     * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)               
+##  digest         0.6.25  2020-02-23 [1] CRAN (R 4.0.2)               
+##  dplyr        * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)               
+##  ellipsis       0.3.1   2020-05-15 [1] CRAN (R 4.0.2)               
+##  evaluate       0.14    2019-05-28 [1] CRAN (R 4.0.2)               
+##  fansi          0.4.1   2020-01-08 [1] CRAN (R 4.0.2)               
+##  farver         2.0.3   2020-01-16 [1] CRAN (R 4.0.2)               
+##  forcats      * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)               
+##  fs             1.5.0   2020-07-31 [1] CRAN (R 4.0.2)               
+##  generics       0.0.2   2018-11-29 [1] CRAN (R 4.0.2)               
+##  ggplot2      * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)               
+##  glue           1.4.1   2020-05-13 [1] CRAN (R 4.0.2)               
+##  gridExtra    * 2.3     2017-09-09 [1] CRAN (R 4.0.2)               
+##  gtable         0.3.0   2019-03-25 [1] CRAN (R 4.0.2)               
+##  haven          2.3.1   2020-06-01 [1] CRAN (R 4.0.2)               
+##  hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)               
+##  htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)               
+##  httr           1.4.2   2020-07-20 [1] CRAN (R 4.0.2)               
+##  janeaustenr    0.1.5   2017-06-10 [1] CRAN (R 4.0.2)               
+##  janitor        2.0.1   2020-04-12 [1] CRAN (R 4.0.2)               
+##  jsonlite       1.7.0   2020-06-25 [1] CRAN (R 4.0.2)               
+##  knitr        * 1.29    2020-06-23 [1] CRAN (R 4.0.2)               
+##  labeling       0.3     2014-08-23 [1] CRAN (R 4.0.0)               
+##  lattice        0.20-41 2020-04-02 [2] CRAN (R 4.0.2)               
+##  lifecycle      0.2.0   2020-03-06 [1] CRAN (R 4.0.2)               
+##  lubridate      1.7.9   2020-06-08 [1] CRAN (R 4.0.2)               
+##  magrittr       1.5     2014-11-22 [1] CRAN (R 4.0.2)               
+##  Matrix         1.2-18  2019-11-27 [2] CRAN (R 4.0.2)               
+##  memoise        1.1.0   2017-04-21 [1] CRAN (R 4.0.2)               
+##  modelr         0.1.8   2020-05-19 [1] CRAN (R 4.0.2)               
+##  munsell        0.5.0   2018-06-12 [1] CRAN (R 4.0.2)               
+##  pillar         1.4.6   2020-07-10 [1] CRAN (R 4.0.2)               
+##  pkgbuild       1.1.0   2020-07-13 [1] CRAN (R 4.0.2)               
+##  pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.0.2)               
+##  pkgload        1.1.0   2020-05-29 [1] CRAN (R 4.0.2)               
+##  prettyunits    1.1.1   2020-01-24 [1] CRAN (R 4.0.2)               
+##  processx       3.4.3   2020-07-05 [1] CRAN (R 4.0.2)               
+##  ps             1.3.3   2020-05-08 [1] CRAN (R 4.0.2)               
+##  purrr        * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)               
+##  R6             2.4.1   2019-11-12 [1] CRAN (R 4.0.2)               
+##  rappdirs       0.3.1   2016-03-28 [1] CRAN (R 4.0.2)               
+##  Rcpp           1.0.5   2020-07-06 [1] CRAN (R 4.0.2)               
+##  readr        * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)               
+##  readxl         1.3.1   2019-03-13 [1] CRAN (R 4.0.2)               
+##  remotes        2.2.0   2020-07-21 [1] CRAN (R 4.0.2)               
+##  reprex         0.3.0   2019-05-16 [1] CRAN (R 4.0.2)               
+##  reticulate     1.16    2020-05-27 [1] CRAN (R 4.0.2)               
+##  rlang          0.4.7   2020-07-09 [1] CRAN (R 4.0.2)               
+##  rmarkdown      2.3     2020-06-18 [1] CRAN (R 4.0.2)               
+##  rprojroot      1.3-2   2018-01-03 [1] CRAN (R 4.0.2)               
+##  rstudioapi     0.11    2020-02-07 [1] CRAN (R 4.0.2)               
+##  rvest        * 0.3.6   2020-07-25 [1] CRAN (R 4.0.2)               
+##  scales       * 1.1.1   2020-05-11 [1] CRAN (R 4.0.2)               
+##  selectr        0.4-2   2019-11-20 [1] CRAN (R 4.0.2)               
+##  sessioninfo    1.1.1   2018-11-05 [1] CRAN (R 4.0.2)               
+##  snakecase      0.11.0  2019-05-25 [1] CRAN (R 4.0.2)               
+##  SnowballC      0.7.0   2020-04-01 [1] CRAN (R 4.0.0)               
+##  stringi        1.4.6   2020-02-17 [1] CRAN (R 4.0.0)               
+##  stringr      * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)               
+##  testthat       2.3.2   2020-03-02 [1] CRAN (R 4.0.2)               
+##  tibble       * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)               
+##  tidyr        * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)               
+##  tidyselect     1.1.0   2020-05-11 [1] CRAN (R 4.0.2)               
+##  tidytext     * 0.2.6   2020-09-20 [1] CRAN (R 4.0.2)               
+##  tidytuesdayR * 1.0.1   2020-07-10 [1] CRAN (R 4.0.2)               
+##  tidyverse    * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)               
+##  tokenizers     0.2.1   2018-03-29 [1] CRAN (R 4.0.2)               
+##  usethis      * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)               
+##  vctrs          0.3.2   2020-07-15 [1] CRAN (R 4.0.2)               
+##  withr          2.2.0   2020-04-20 [1] CRAN (R 4.0.2)               
+##  xfun           0.16    2020-07-24 [1] CRAN (R 4.0.2)               
+##  xml2         * 1.3.2   2020-04-23 [1] CRAN (R 4.0.2)               
+##  yaml           2.2.1   2020-02-01 [1] CRAN (R 4.0.2)               
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
