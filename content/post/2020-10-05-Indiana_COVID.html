@@ -1,0 +1,34 @@
+---
+title: "DT::datatable seasoned with javascript"
+author: "Jack VanSchaik"
+description: "Adding javascript to make data tables a bit easier to digest"
+date: 2020-10-05
+categories: ["R", "COVID-19"]
+tags: ["R Markdown", "R", "Indiana", "COVID-19", "Coronavirus"]
+twitterImg: /images/plot_2.png
+---
+
+
+
+<div id="indiana-coronavirus-case-model" class="section level2">
+<h2>Indiana Coronavirus Case Model</h2>
+<p>I’ve been working on a statistical model for predicting daily COVID-19 case counts in Indiana.</p>
+<p>I gathered data from 7 places:</p>
+<ul>
+<li><a href="The%20R%20coronavirus%20package">https://github.com/RamiKrispin/coronavirus</a></li>
+<li><a href="Indiana%20State%20Department%20of%20Health">https://www.coronavirus.in.gov/2393.htm</a></li>
+<li><a href="Google%20Trends">https://trends.google.com/trends/?geo=US</a></li>
+<li><a href="Eviction%20Lab">https://evictionlab.org/</a></li>
+<li><a href="Google%20Mobility%20data">https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv</a></li>
+<li><a href="WFYI%20news">https://www.wfyi.org/</a></li>
+<li><a href="Rural%20Urban%20Commuting%20Codes">https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/</a></li>
+</ul>
+<p>I also manually included the “phases” for Holcomb’s Back on Track plan.</p>
+</div>
+<div id="results" class="section level2">
+<h2>Results</h2>
+<p>My model is still in development, but I’ve made some progress. Set aside the last 28 days as testing data and trained my model on the remaining data.</p>
+<p>After some tweaking, here are two iterations that were fairly successful:</p>
+<p><img src="/images/plot_1.png" /></p>
+<p><img src="/images/plot_2.png" /></p>
+</div>
