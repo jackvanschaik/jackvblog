@@ -99,24 +99,24 @@
 </div>
 <div id="results" class="section level2">
 <h2>Results</h2>
-<p>My model is still in development, but I’ve made some progress. Set aside the last 28 days as testing data and trained my model on the remaining data.</p>
+<p>My model is still in development, but I’ve made some progress. I set aside the last 28 days as testing data and trained my model on the remaining data.</p>
 <p>After some tweaking, here are two iterations that were fairly successful:</p>
-<div id="model-1" class="section level4">
-<h4>Model 1</h4>
-<p>This version of the model has a pretty good testing <span class="math inline">\(R^2\)</span> of about 0.714. It significantly underpredicts cases in the most recent week, however.</p>
+<div id="version-1" class="section level4">
+<h4>Version 1</h4>
+<p>This version of the model has testing <span class="math inline">\(R^2\)</span> of about 0.714. It significantly underpredicts cases in the most recent week, however.</p>
 <p><img src="/images/plot_1.png" /></p>
 </div>
-<div id="model-2" class="section level4">
-<h4>Model 2</h4>
-<p>While this next version of the model has a slightly lower testing <span class="math inline">\(R^2\)</span> of 0.634, however it is simpler than the above model, more interpretable, and captures the overall trend very well.</p>
+<div id="version-2" class="section level4">
+<h4>Version 2</h4>
+<p>This next version of the model has a lower testing <span class="math inline">\(R^2\)</span> of 0.634, however it is simpler than the above model, more interpretable, and captures the overall trend pretty well.</p>
 <p><img src="/images/plot_2.png" /></p>
 </div>
 </div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>
-<p>While these results are preliminary and the model is not yet very sophisticated, I have been able to make some inferences.</p>
+<p>While these results are preliminary and the model is not yet very sophisticated, I have been able to make some inferences:</p>
 <ul>
-<li>Day of week is need to account for weekly periodicity</li>
+<li>Day of week is needed to account for weekly periodicity</li>
 <li>Google searches for “Indiana Coronavirus” are somewhat predictive of COVID-19 cases</li>
 <li>Mobility, both on the county and state level, are predictive of COVID-19 cases</li>
 </ul>

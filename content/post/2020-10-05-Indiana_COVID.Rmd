@@ -32,27 +32,27 @@ I also manually included the "phases" for Holcomb's Back on Track plan.
 
 ## Results
 
-My model is still in development, but I've made some progress. Set aside the last 28 days as testing data and trained my model on the remaining data.
+My model is still in development, but I've made some progress. I set aside the last 28 days as testing data and trained my model on the remaining data.
 
 After some tweaking, here are two iterations that were fairly successful:
 
-#### Model 1
+#### Version 1
 
-This version of the model has a pretty good testing $R^2$ of about 0.714. It significantly underpredicts cases in the most recent week, however.
+This version of the model has testing $R^2$ of about 0.714. It significantly underpredicts cases in the most recent week, however.
 
 ![](/images/plot_1.png)
 
-#### Model 2
+#### Version 2
 
-While this next version of the model has a slightly lower testing $R^2$ of 0.634, however it is simpler than the above model, more interpretable, and captures the overall trend very well.
+This next version of the model has a lower testing $R^2$ of 0.634, however it is simpler than the above model, more interpretable, and captures the overall trend pretty well.
 
 ![](/images/plot_2.png)
 
 ## Discussion
 
-While these results are preliminary and the model is not yet very sophisticated, I have been able to make some inferences. 
+While these results are preliminary and the model is not yet very sophisticated, I have been able to make some inferences:
 
-* Day of week is need to account for weekly periodicity
+* Day of week is needed to account for weekly periodicity
 * Google searches for "Indiana Coronavirus" are somewhat predictive of COVID-19 cases
 * Mobility, both on the county and state level, are predictive of COVID-19 cases
 

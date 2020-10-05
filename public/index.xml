@@ -20,7 +20,7 @@
       <description>Indiana Coronavirus Case ModelI’ve been working on a statistical model for predicting daily COVID-19 case counts in Indiana.
 I gathered data from 7 places:
 https://github.com/RamiKrispin/coronavirushttps://www.coronavirus.in.gov/2393.htmhttps://trends.google.com/trends/?geo=UShttps://evictionlab.org/https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csvhttps://www.wfyi.org/https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/I also manually included the “phases” for Holcomb’s Back on Track plan.
-ResultsMy model is still in development, but I’ve made some progress. Set aside the last 28 days as testing data and trained my model on the remaining data.</description>
+ResultsMy model is still in development, but I’ve made some progress. I set aside the last 28 days as testing data and trained my model on the remaining data.</description>
     </item>
     
     <item>
