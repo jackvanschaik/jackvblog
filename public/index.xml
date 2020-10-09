@@ -12,11 +12,11 @@
     
     
     <item>
-      <title>Analysis: IndianaCOVID-19 Infection Rate Disparities</title>
-      <link>/2020/10/09/analysis-indianacovid-19-infection-rate-disparities/</link>
+      <title>Analysis: Indiana COVID-19 Infection Rate Disparities</title>
+      <link>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</link>
       <pubDate>Fri, 09 Oct 2020 00:00:00 +0000</pubDate>
       
-      <guid>/2020/10/09/analysis-indianacovid-19-infection-rate-disparities/</guid>
+      <guid>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</guid>
       <description>library(tidyverse)library(corrplot)IntroductionThe following analysis shows a strong relationship between eviction in Indiana, African American population rate, and COVID infection rates. These populations are at an increased risk of a faster COVID-19 infection rate in Indiana.
 This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my Github.
 Data ExtractWe’ll extract data from two places:</description>

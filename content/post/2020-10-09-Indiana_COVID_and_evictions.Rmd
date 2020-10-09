@@ -1,5 +1,5 @@
 ---
-title: "Analysis: IndianaCOVID-19 Infection Rate Disparities"
+title: "Analysis: Indiana COVID-19 Infection Rate Disparities"
 author: "Jack VanSchaik"
 description: "Some Hoosier demographics face disparity in COVID-19 infection rate"
 date: 2020-10-09
@@ -24,7 +24,7 @@ library(corrplot)
 
 The following analysis shows a strong relationship between eviction in Indiana, African American population rate, and COVID infection rates. These populations are at an increased risk of a faster COVID-19 infection rate in Indiana.
 
-This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my [Github]().
+This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my [Github](https://github.com/jackvanschaik/jackvblog/blob/master/content/post/2020-10-09-Indiana_COVID_and_evictions.Rmd).
 
 ## Data Extract 
 
@@ -236,7 +236,7 @@ Here are the key takeaways:
 
 A significant association does not imply causation, only correlation. 
 
-Indiana has recently moved into Stage 5 of it's Back on Track reopening plan and should put serious consideration into how letting up restrictions can adversely and unfairly impact certain populations. In this case, African American Hoosiers and potential evictees are at an elevated risk of a faster COVID spread. 
+Indiana has recently moved into Stage 5 of its Back on Track reopening plan and should put serious consideration into how letting up restrictions can adversely and unfairly impact certain populations. In this case, African American Hoosiers and potential evictees are at an elevated risk of a faster COVID spread. 
 
 ## Data
 
