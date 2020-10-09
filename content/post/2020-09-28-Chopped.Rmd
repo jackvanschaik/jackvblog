@@ -1,0 +1,109 @@
+---
+title: "DT::datatable seasoned with javascript"
+author: "Jack VanSchaik"
+description: "Adding javascript to make data tables a bit easier to digest"
+date: 2020-09-28
+categories: ["R"]
+tags: ["R Markdown", "R"]
+twitterImg: /images/chopped_gpv2zg.jpg
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r, results="hide"}
+library(dplyr)
+library(readr)
+library(jsonlite)
+library(htmltools)
+library(DT)
+```
+
+```{r, results="hide"}
+# This function simply lets us stash a character value in a javascript variable
+embed_dataframe <- function(X, var = "X") {
+    Y <- toJSON(X)
+    tags$script(sprintf("%s = %s;", var, Y))
+}
+```
+
+```{js, class.source="choppedfun"}
+/* This will get a row ID via our data table and modify a bunch of HTML based on that row */
+chop = function(id) {
+    var row = chopped[id];
+    document.getElementById("episode_name").innerHTML = row["episode_name"] + ": " + row["air_date"];
+    document.getElementById("episode_notes").innerHTML = row["episode_notes"];
+    document.getElementById("judge1").innerHTML = row["judge1"];
+    document.getElementById("judge2").innerHTML = row["judge2"];
+    document.getElementById("judge3").innerHTML = row["judge3"];
+    document.getElementById("appetizer").innerHTML = row["appetizer"];
+    document.getElementById("entree").innerHTML = row["entree"];
+    document.getElementById("dessert").innerHTML = row["dessert"];
+    document.getElementById("chef1").innerHTML = row["contestant1"] + ": " + row["contestant1_info"];
+    document.getElementById("chef2").innerHTML = row["contestant2"] + ": " + row["contestant2_info"];
+    document.getElementById("chef3").innerHTML = row["contestant3"] + ": " + row["contestant3_info"];
+    document.getElementById("chef4").innerHTML = row["contestant4"] + ": " + row["contestant4_info"];
+}
+```
+
+```{r}
+chopped <- read_csv("C:/Users/Jack/Documents/data/chopped/chopped.csv")
+embed_dataframe(chopped, var="chopped")
+```
+
+```{r, results="hide"}
+# Include a few colums: `season`, `season_episode`, `series_episode` and `episode_name`.
+# Modify `episode_name` to call a javascript function on click
+#The `escape` argument to `DT::datatable` lets us include raw HTML.
+
+chopped %>%
+    mutate(id = seq(episode_name)-1) %>%
+    transmute(
+        `Season` = season,
+        `Season Episode` = season_episode,
+        `Series Episode` = series_episode,
+        `Episode Name` = sprintf('<a href="javascript:{chop(%s)}">%s</a>', id, episode_name)
+    ) ->
+    chopped_2
+```
+
+Today I've made for you an interactive table, using four ingredients:
+
+* Rmarkdown
+* The [datatable](https://rstudio.github.io/DT/) package
+* The [jsonlite](https://github.com/rstudio/htmltools) package
+* A [Chopped dataset](https://www.kaggle.com/jeffreybraun/chopped-10-years-of-episode-data) from Kaggle.
+
+With a sprinkle of javascript, the data table is made interactive and a lot easier to digest. 
+
+Check out the [full source code](https://github.com/jackvanschaik/jackvblog/blob/master/content/post/2020-09-28-Chopped.Rmd)
+
+#### Chopped Episodes
+
+```{r, echo=FALSE}
+datatable(chopped_2, selection="none", escape=FALSE)
+```
+
+<div id="episode_info">
+
+<h4 id="episode_name">Try Clicking an Episode Name Above</h4>
+<p id="episode_notes"></p>
+<h4><b>Judges:</b></h4>
+<p id="judge1"></p>
+<p id="judge2"></p>
+<p id="judge3"></p>
+<h4><b>Appetizer:</b></h4>
+<p id="appetizer"></p>
+<h4><b>Entree:</b></h4>
+<p id="entree"></p>
+<h4><b>Dessert:</b></h4>
+<p id="dessert"></p>
+<h4><b>Contestants:</b></h4>
+<p id="chef1"></p>
+<p id="chef2"></p>
+<p id="chef3"></p>
+<p id="chef4"></p>
+</div>

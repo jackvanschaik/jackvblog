@@ -1,0 +1,253 @@
+---
+title: "Analysis: Indiana COVID-19 Infection Rate Disparities"
+author: "Jack VanSchaik"
+description: "Some Hoosier demographics face disparity in COVID-19 infection rate"
+date: 2020-10-09
+categories: ["R", "COVID-19"]
+tags: ["R Markdown", "R", "Indiana", "COVID-19", "Coronavirus"]
+twitterImg: images/plot_3.png
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(corrplot)
+```
+
+
+## Introduction
+
+The following analysis shows a strong relationship between eviction in Indiana, African American population rate, and COVID infection rates. These populations are at an increased risk of a faster COVID-19 infection rate in Indiana.
+
+This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my [Github](https://github.com/jackvanschaik/jackvblog/blob/master/content/post/2020-10-09-Indiana_COVID_and_evictions.Rmd).
+
+## Data Extract 
+
+We'll extract data from two places:
+
+* [Indiana State Department of Health](https://www.coronavirus.in.gov/2393.htm)
+* [Eviction Lab](https://evictionlab.org/)
+
+#### ISDH
+
+We'll use ISDH's county trends data from the MPH data hub. 
+
+```{r}
+mph_to_df <- function(resource_id) {
+    url <- sprintf("https://hub.mph.in.gov/api/3/action/datastore_search?resource_id=%s&limit=1000000", resource_id)
+    res <- jsonlite::fromJSON(url)$result
+    janitor::clean_names(res$records)
+}
+
+county_trends <- mph_to_df("afaa225d-ac4e-4e80-9190-f6800c366b58")
+county_trends %>%
+    mutate(
+        county=as.character(location_id),
+        date = as.Date(substr(date, 1, 10))
+    ) ->
+    county_trends
+```
+
+#### Eviction Lab
+
+Data from the eviction lab is available for direct download. The most recent data available is from 2016.
+
+```{r}
+eviction <- read_csv("https://eviction-lab-data-downloads.s3.amazonaws.com/IN/counties.csv")
+
+eviction %>%
+    janitor::clean_names() %>%
+    filter(year == 2016) %>%
+    transmute(
+        county = substr(as.character(geoid), 1, 5),
+        population, 
+        poverty_rate,
+        pct_renter_occupied,
+        median_gross_rent, 
+        median_household_income,
+        median_property_value,
+        rent_burden,
+        pct_white,
+        pct_af_am,
+        pct_hispanic,
+        eviction_rate,
+        eviction_filing_rate
+    ) ->
+    eviction_2
+```
+
+## Data Transformation
+
+#### Cumulative Case Rate
+
+We want a metric to assess the spread in the pandemic over time. Here's what we'll do:
+
+* Calculate the cumulative cases over time for each county
+* Divide cumulative cases by population
+* Find the line of best fit for each curve
+* Use the slope of that line to estimate infection growth rate
+
+The outlying line is Cass county. It had a huge outbreak in the first wave. We'll exclude it from the analysis from here on out.
+
+```{r}
+eviction_2 %>%
+    select(county, population) %>%
+    inner_join(county_trends, by="county") %>%
+    mutate(date_number = as.numeric(date) - min(as.numeric(date))) %>%
+    arrange(county, date) %>%
+    group_by(county, county_name) %>%
+    mutate(case_rate = cumsum(covid_count)/population) ->
+    cum_case_1
+
+ggplot(cum_case_1, aes(x = date, y=case_rate, color=county)) + 
+    geom_line() +
+    labs(x="Date", y="Cumulative Cases Per Population", title = "Cumulative Case Rate for Indiana Counties") +
+    theme(legend.position = "none")
+```
+
+```{r}
+cum_case_1 %>%
+    filter(county != 18017) %>%
+    nest(X = !county) %>%
+    mutate(
+        B1 = map(X, ~ lm(case_rate ~ date_number, data=.x)$coefficients[2])
+    ) %>%
+    select(-X) %>%
+    unnest(cols = c(B1)) %>%
+    rename(avg_rate = B1) ->
+    county_rates
+```
+
+Join this back to eviction data...
+
+```{r}
+county_rates %>%
+    inner_join(eviction_2, by="county") %>%
+    ungroup ->
+    eviction_3
+```
+
+#### Variable Selection
+
+We'll look for correlated predictors and remove any that are highly correlated.
+
+```{r}
+eviction_3 %>%
+    select(-county) %>%
+    filter(!is.na(eviction_rate)) %>%
+    cor %>%
+    corrplot
+```
+
+Household income. median rent, and property value are highly correlated. As one might expected, rate and ethnicity demographics are inversely correlated. Eviction rate and filing rate are highly correlated. Population count itself is not that informative. Percent renter occupied is correlated with rent burden. Based on all that, we'll remove a few variables. 
+
+Also there's
+
+```{r}
+sum(is.na(eviction_3$eviction_rate))
+```
+Rows with missing eviction data that we'll remove.
+
+```{r}
+eviction_3 %>%
+    filter(!is.na(eviction_rate)) %>%
+    select(county, avg_rate, median_gross_rent, pct_af_am, eviction_rate, pct_renter_occupied) ->
+    eviction_4
+```
+
+
+
+## Analyze
+
+Now that the data is ready, we can do the actual analysis
+
+#### Plots
+
+Let's look at some preliminary plots of predictors vs our rate variable
+
+```{r}
+gridExtra::grid.arrange(
+    ggplot(eviction_4, aes(x=median_gross_rent, y=avg_rate)) + geom_point(),
+    ggplot(eviction_4, aes(x=log(pct_af_am), y=avg_rate)) + geom_point(),
+    ggplot(eviction_4, aes(x=eviction_rate, y=avg_rate)) + geom_point(),
+    ggplot(eviction_4, aes(x=pct_renter_occupied, y=avg_rate)) + geom_point(),
+    nrow = 2
+)
+```
+
+I ended up taking the log transform of `pct_af_am` to better meet the assumptions of a linear model.
+
+#### Running the Linear Model
+
+Now we can run our model
+
+```{r}
+fit_1 <- lm(avg_rate ~ median_gross_rent + log(pct_af_am) + eviction_rate + pct_renter_occupied, 
+            data = eviction_4)
+
+summary(fit_1)
+```
+
+This p values are telling me that percent African American and Eviction rate are most likely the only significant variables.
+
+```{r}
+fit_2 <- lm(avg_rate ~ log(pct_af_am) + eviction_rate, data = eviction_4)
+
+summary(fit_2)
+```
+#### Checking the fit
+
+Finally, we should check the fit of our model by checking the normality of our variables. We can do this by looking at the quantile plot:
+
+```{r}
+qqnorm(fit_2$residuals)
+qqline(y=fit_2$residuals)
+```
+
+The residuals are pretty normal, so we meet that assumption.
+
+```{r}
+cor(fit_2$residuals, eviction_4$avg_rate)
+cor(fit_2$residuals, eviction_4$avg_rate, method = "spearman")
+plot(y=fit_2$residuals, x=eviction_4$avg_rate)
+```
+
+Our residuals are highly correlated. This essentially tells us that as the average infection rate gets larger, the model's guess get farther off. This doesn't matter as much in our use case because we're not trying to do prediction. We also would probably be able to account for this relationship if we had other variables. 
+
+#### Discussion
+
+The R-squared values for our model is about 0.15-- meaning 15% of the variation in infection rate can be explained by eviction rate and percent African American. There are of course many other factors that determine infection rate, but we did in fact find our two predictor variables to be statistically significant. The eviction rate and percent African American population is in fact associated with an increased infection rate. 
+
+## Conclusion
+
+Here are the key takeaways:
+
+* Analyzed 83 Indiana counties using 2 datasets
+* Outcome of interest was the infection rate of Indiana counties
+* Several variables were narrowed down to two with significance
+* Increased COVID infection rate was significantly associated with an increased African American population rate in a county (p = 0.0157)
+* Increased COVID infection rate was also significantly associated with eviction rate in a county (p = 0.0178)
+* The linear model was a decent fit in this case
+
+A significant association does not imply causation, only correlation. 
+
+Indiana has recently moved into Stage 5 of its Back on Track reopening plan and should put serious consideration into how letting up restrictions can adversely and unfairly impact certain populations. In this case, African American Hoosiers and potential evictees are at an elevated risk of a faster COVID spread. 
+
+## Data
+
+```{r}
+DT::datatable(eviction_4)
+```
+
+
+## Session Info
+
+```{r}
+devtools::session_info()
+```
+

@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+config.toml
+index.Rmd
+jackvblog.Rproj
+static/*
+themes/*
+public/*
+git_script.R
