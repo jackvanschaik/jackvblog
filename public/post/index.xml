@@ -1,94 +1,0 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>Posts on Jack&#39;s Blog</title>
-    <link>/post/</link>
-    <description>Recent content in Posts on Jack&#39;s Blog</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Fri, 09 Oct 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
-    
-    
-    <item>
-      <title>Analysis: Indiana COVID-19 Infection Rate Disparities</title>
-      <link>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</link>
-      <pubDate>Fri, 09 Oct 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</guid>
-      <description>library(tidyverse)library(corrplot)IntroductionThe following analysis shows a strong relationship between eviction in Indiana, African American population rate, and COVID infection rates. These populations are at an increased risk of a faster COVID-19 infection rate in Indiana.
-This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my Github.
-Data ExtractWe’ll extract data from two places:</description>
-    </item>
-    
-    <item>
-      <title>Indiana COVID-19 Case Model</title>
-      <link>/2020/10/05/indiana-covid-19-case-model/</link>
-      <pubDate>Mon, 05 Oct 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/10/05/indiana-covid-19-case-model/</guid>
-      <description>Indiana Coronavirus Case ModelI’ve been working on a statistical model for predicting daily COVID-19 case counts in Indiana.
-I gathered data from 7 places:
-https://github.com/RamiKrispin/coronavirushttps://www.coronavirus.in.gov/2393.htmhttps://trends.google.com/trends/?geo=UShttps://evictionlab.org/https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csvhttps://www.wfyi.org/https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/I also manually included the “phases” for Holcomb’s Back on Track plan.
-ResultsMy model is still in development, but I’ve made some progress. I set aside the last 28 days as testing data and trained my model on the remaining data.</description>
-    </item>
-    
-    <item>
-      <title>Tidy Tuesday 9-29-2020</title>
-      <link>/2020/09/29/tidy-tuesday-9-29-2020/</link>
-      <pubDate>Tue, 29 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/29/tidy-tuesday-9-29-2020/</guid>
-      <description>Load Packagesbeyonce: Load Beyonce themed color palettesgridExtra: To arrange visualizationsknitr: For nice data frame printingrvest: For webscrapingscales: To help with plotstidytext: To do text processingtidyverse: For data cleaning and plottingtidytuesdayR: To load the Tidy Tuesday datalibrary(beyonce)library(gridExtra)library(knitr)library(rvest)library(scales)library(tidytext)library(tidytuesdayR)library(tidyverse)Load DataFollowing the instructions on the Tidy Tuesday Github:
-tuesdata &amp;lt;- tidytuesdayR::tt_load(&amp;#39;2020-09-29&amp;#39;)## --- Compiling #TidyTuesday Information for 2020-09-29 ----## --- There are 4 files available ---## --- Starting Download ---## ## Downloading file 1 of 4: `beyonce_lyrics.</description>
-    </item>
-    
-    <item>
-      <title>DT::datatable seasoned with javascript</title>
-      <link>/2020/09/28/dtdatatable-seasoned-with-javascript/</link>
-      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/28/dtdatatable-seasoned-with-javascript/</guid>
-      <description>/* This will get a row ID via our data table and modify a bunch of HTML based on that row */chop = function(id) {var row = chopped[id];document.getElementById(&#34;episode_name&#34;).innerHTML = row[&#34;episode_name&#34;] + &#34;: &#34; + row[&#34;air_date&#34;];document.getElementById(&#34;episode_notes&#34;).innerHTML = row[&#34;episode_notes&#34;];document.getElementById(&#34;judge1&#34;).innerHTML = row[&#34;judge1&#34;];document.getElementById(&#34;judge2&#34;).innerHTML = row[&#34;judge2&#34;];document.getElementById(&#34;judge3&#34;).innerHTML = row[&#34;judge3&#34;];document.getElementById(&#34;appetizer&#34;).innerHTML = row[&#34;appetizer&#34;];document.getElementById(&#34;entree&#34;).innerHTML = row[&#34;entree&#34;];document.getElementById(&#34;dessert&#34;).innerHTML = row[&#34;dessert&#34;];document.getElementById(&#34;chef1&#34;).innerHTML = row[&#34;contestant1&#34;] + &#34;: &#34;</description>
-    </item>
-    
-    <item>
-      <title>Reproducible ICD Conversion With ATHENA and R</title>
-      <link>/2020/09/25/reproducible-icd-conversion-with-athena-and-r/</link>
-      <pubDate>Fri, 25 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/25/reproducible-icd-conversion-with-athena-and-r/</guid>
-      <description>Why Bother?If you work with diagnosis data, you’re likely to encounter ICD codes. ICD (Internal Classification of Diseases) is a globally used set codes that hierarchically classifies diagnoses, symptoms, and other clinical observations. Since the adoption of the Electronic Health Records (EHR), the primary revision of ICD in use ICD-9. At least, that was so until October 1st, 2015, when the United States made a nationwide switch to ICD-10.</description>
-    </item>
-    
-    <item>
-      <title>Ethics of the Health Information Exchange in the Era of Data Science</title>
-      <link>/2020/09/22/ethics-of-the-health-information-exchange-in-the-era-of-data-science/</link>
-      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/22/ethics-of-the-health-information-exchange-in-the-era-of-data-science/</guid>
-      <description>IntroductionHealth Information Exchanges (HIEs) allow for the transfer and storage of EHR data across institutions, with the primary use of improving patient care (Health IT 2020). The combination of multiple EHRs creates a wealth of data that can also be attractive for secondary uses such as research. Recent advances in machine learning and data science have enabled the analysis of HIE data in unanticipated ways.</description>
-    </item>
-    
-    <item>
-      <title>How To: Create a Practice OMOP Dataset in R</title>
-      <link>/2020/09/22/how-to-create-a-practice-omop-dataset-in-r/</link>
-      <pubDate>Tue, 22 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/22/how-to-create-a-practice-omop-dataset-in-r/</guid>
-      <description>IntroductionThe use of electronic health record (EHR) data is common and often necessary in clinical research. These data can be cumbersome and complicated, yet inaccessible due to privacy laws. My goal in this post is to set the reader up with a “fake” clinical dataset so that they can learn the ins and out of EHR data and feel more prepared when they encounter the real thing.</description>
-    </item>
-    
-    <item>
-      <title>Test Post</title>
-      <link>/2020/09/21/test-post/</link>
-      <pubDate>Mon, 21 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/09/21/test-post/</guid>
-      <description>This is a testYep. This is what it looks like– This line here is to test continuous integration.
-</description>
-    </item>
-    
-  </channel>
-</rss>

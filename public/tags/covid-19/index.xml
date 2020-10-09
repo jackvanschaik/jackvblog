@@ -1,38 +1,0 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>COVID-19 on Jack&#39;s Blog</title>
-    <link>/tags/covid-19/</link>
-    <description>Recent content in COVID-19 on Jack&#39;s Blog</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Fri, 09 Oct 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="/tags/covid-19/index.xml" rel="self" type="application/rss+xml" />
-    
-    
-    <item>
-      <title>Analysis: Indiana COVID-19 Infection Rate Disparities</title>
-      <link>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</link>
-      <pubDate>Fri, 09 Oct 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/10/09/analysis-indiana-covid-19-infection-rate-disparities/</guid>
-      <description>library(tidyverse)library(corrplot)IntroductionThe following analysis shows a strong relationship between eviction in Indiana, African American population rate, and COVID infection rates. These populations are at an increased risk of a faster COVID-19 infection rate in Indiana.
-This analysis is completely reproducible. The R code to gather the data, prep it, and perform the analysis are on my Github.
-Data ExtractWe’ll extract data from two places:</description>
-    </item>
-    
-    <item>
-      <title>Indiana COVID-19 Case Model</title>
-      <link>/2020/10/05/indiana-covid-19-case-model/</link>
-      <pubDate>Mon, 05 Oct 2020 00:00:00 +0000</pubDate>
-      
-      <guid>/2020/10/05/indiana-covid-19-case-model/</guid>
-      <description>Indiana Coronavirus Case ModelI’ve been working on a statistical model for predicting daily COVID-19 case counts in Indiana.
-I gathered data from 7 places:
-https://github.com/RamiKrispin/coronavirushttps://www.coronavirus.in.gov/2393.htmhttps://trends.google.com/trends/?geo=UShttps://evictionlab.org/https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csvhttps://www.wfyi.org/https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/I also manually included the “phases” for Holcomb’s Back on Track plan.
-ResultsMy model is still in development, but I’ve made some progress. I set aside the last 28 days as testing data and trained my model on the remaining data.</description>
-    </item>
-    
-  </channel>
-</rss>
