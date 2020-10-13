@@ -1,0 +1,233 @@
+---
+title: "Tidy Tuesday 10-13-2020"
+author: "Jack VanSchaik"
+description: "Which words are worth the most?"
+date: 2020-10-13
+categories: ["TidyTuesday"]
+tags: ["R Markdown", "R", "TidyTuesday", "Tidyverse"]
+twitterImg: /images/tidy_2.png
+---
+
+
+
+<div id="load-packages" class="section level2">
+<h2>Load Packages</h2>
+<p>I’ll use <code>tidyverse</code> for data wrangling and plotting, and <code>gganimate</code> and <code>ggthemes</code> to make my plots more interesting.</p>
+<pre class="r"><code>library(tidyverse)
+library(gganimate)
+library(ggthemes)</code></pre>
+</div>
+<div id="load-data" class="section level2">
+<h2>Load Data</h2>
+<p>Data acquired as described on the <a href="https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-10-13/readme.md">Tidy Tuesday Github</a>:</p>
+<pre class="r"><code>tuesdata &lt;- tidytuesdayR::tt_load(&#39;2020-10-13&#39;)</code></pre>
+<pre><code>## --- Compiling #TidyTuesday Information for 2020-10-13 ----</code></pre>
+<pre><code>## --- There is 1 file available ---</code></pre>
+<pre><code>## --- Starting Download ---</code></pre>
+<pre><code>## 
+##  Downloading file 1 of 1: `datasaurus.csv`</code></pre>
+<pre><code>## --- Download complete ---</code></pre>
+<pre class="r"><code>ds &lt;- tuesdata$datasaurus</code></pre>
+</div>
+<div id="visualize-raw-data" class="section level2">
+<h2>Visualize Raw Data</h2>
+<p>The <code>datasauRus</code> package contains a dataset of 13 set of coordinates that have some almost identical summary statistics. Again borrowing code from the GitHub page:</p>
+<pre class="r"><code>ggplot(ds, aes(x=x, y=y, colour=dataset))+
+  geom_point()+
+  theme_void()+
+  theme(legend.position = &quot;none&quot;)+
+  facet_wrap(~dataset, ncol=3)</code></pre>
+<p><img src="/post/2020-10-13-Tidy_Tuesday_2020-10-13_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+</div>
+<div id="how-dino-shaped-is-the-data" class="section level2">
+<h2>How dino shaped is the data?</h2>
+<p>The means, standard deviations, and correlations of the above data are all the same. Clearly these summary statistics have some deficiencies. I’ll come up with new statistic, “Dino Distance”. This new metric will measure this average distance in a dataset to the corresponding closest point in the dino dataset.</p>
+<div id="animation" class="section level4">
+<h4>Animation</h4>
+<p>Get the closest point in the dino dataset to each point in the other datasets:</p>
+<pre class="r"><code>ds %&gt;%
+    filter(dataset == &quot;dino&quot;) %&gt;%
+    transmute(
+        dino_x = x,
+        dino_y = y
+    ) -&gt;
+    dino
+
+nearest_dino &lt;- function(x_0, y_0) {
+    dino %&gt;%
+        mutate(
+            x_1 = x_0, 
+            y_1 = y_0,
+            dist = sqrt((x_1 - dino_x)^2 + (y_1 - dino_y)^2)
+        ) %&gt;%
+        arrange(dist) %&gt;%
+        head(n = 1) %&gt;%
+        select(dino_x, dino_y, dist) -&gt;
+        nearest
+    
+    nearest
+}
+
+ds %&gt;%
+    mutate(n_d = map2(x, y, nearest_dino)) %&gt;%
+    unnest(cols=c(n_d)) -&gt;
+    ds_2
+
+ds_3 &lt;- bind_rows(
+    ds_2 %&gt;%
+        select(dataset, x, y) %&gt;%
+        mutate(state = &quot;normal&quot;),
+    ds_2 %&gt;%
+        transmute(
+            dataset,
+            x = dino_x,
+            y = dino_y,
+            state = &quot;dino&quot;
+        )
+    
+)</code></pre>
+<p>Create an animation of a few datasets closing the Dino Distance:</p>
+<pre class="r"><code>anim &lt;- ds_3 %&gt;%
+    filter(dataset %in% c(&quot;bullseye&quot;, &quot;dino&quot;, &quot;v_lines&quot;, &quot;x_shape&quot;)) %&gt;%
+    ggplot(aes(x = x, y = y, color=dataset)) +
+    geom_point() +
+    facet_wrap(.~ dataset)  +
+    theme_hc() +
+    theme( 
+        strip.background = element_blank(),
+        strip.text.x = element_blank()
+    ) +
+    labs(x = &quot;X&quot;, y=&quot;Y&quot;, title=&quot;Nearest Dino Point (Animation)&quot;,
+         caption = &quot;Tidy Tuesday 10-13-2020. Data from the datasauRus package&quot;) +
+    transition_states(state, transition_length = 1, state_length =  2)
+
+animate(anim, duration = 3, fps = 20, width = 400, height = 400, renderer = gifski_renderer())</code></pre>
+<p><img src="/post/2020-10-13-Tidy_Tuesday_2020-10-13_files/figure-html/unnamed-chunk-5-1.gif" /><!-- --></p>
+</div>
+<div id="get-distance" class="section level4">
+<h4>Get Distance</h4>
+<p>Finally, I’ll calculate the Dino Distance for each dataset:</p>
+<pre class="r"><code>ds_2 %&gt;%
+    group_by(dataset) %&gt;%
+    summarise(dino_dist = mean(dist)) %&gt;%
+    ungroup %&gt;%
+    arrange(desc(dino_dist)) %&gt;%
+    mutate(dataset=factor(dataset, levels=dataset)) %&gt;%
+    ggplot(aes(x=dataset, y=dino_dist)) + 
+        geom_bar(stat=&quot;identity&quot;) +
+        coord_flip() + 
+    labs(y = &quot;Dino Distance&quot;, x=&quot;Data Set&quot;, title=&quot;Dino Distance by Dataset&quot;,
+         caption = &quot;Tidy Tuesday 10-13-2020. Data from the datasauRus package&quot;) +
+    theme_hc()</code></pre>
+<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<p><img src="/post/2020-10-13-Tidy_Tuesday_2020-10-13_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-10-13                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package      * version date       lib source        
+##  assertthat     0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports      1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blob           1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##  blogdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  broom          0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##  callr          3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cellranger     1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##  cli            2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  colorspace     1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##  crayon         1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  curl           4.3     2019-12-02 [1] CRAN (R 4.0.2)
+##  DBI            1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##  dbplyr         1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##  desc           1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools     * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest         0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr        * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  ellipsis       0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate       0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi          0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  farver         2.0.3   2020-01-16 [1] CRAN (R 4.0.2)
+##  forcats      * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##  fs             1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics       0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  gganimate    * 1.0.6   2020-07-08 [1] CRAN (R 4.0.2)
+##  ggplot2      * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##  ggthemes     * 4.2.0   2019-05-13 [1] CRAN (R 4.0.2)
+##  gifski         0.8.6   2018-09-28 [1] CRAN (R 4.0.2)
+##  glue           1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  gtable         0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##  haven          2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##  hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  httr           1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##  jsonlite       1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr          1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  labeling       0.3     2014-08-23 [1] CRAN (R 4.0.0)
+##  lattice        0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle      0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate      1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr       1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix         1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise        1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  modelr         0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##  munsell        0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##  pillar         1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild       1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload        1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  plyr           1.8.6   2020-03-03 [1] CRAN (R 4.0.2)
+##  prettyunits    1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx       3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  progress       1.2.2   2019-05-16 [1] CRAN (R 4.0.2)
+##  ps             1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr        * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6             2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs       0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp           1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr        * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  readxl         1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##  remotes        2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reprex         0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##  reticulate     1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang          0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown      2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot      1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi     0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  rvest          0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##  scales         1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##  selectr        0.4-2   2019-11-20 [1] CRAN (R 4.0.2)
+##  sessioninfo    1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi        1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr      * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat       2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble       * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr        * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect     1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  tidytuesdayR   1.0.1   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyverse    * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##  tweenr         1.0.1   2018-12-14 [1] CRAN (R 4.0.2)
+##  usethis      * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs          0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr          2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun           0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  xml2           1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##  yaml           2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
