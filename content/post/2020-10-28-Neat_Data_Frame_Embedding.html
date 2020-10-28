@@ -1,0 +1,137 @@
+---
+title: "Neatly Embedding R Data Frames via JavaScript"
+author: "Jack VanSchaik"
+description: "Embed R data frames in web pages via JavaScript and json"
+date: 2020-10-128
+categories: ["R"]
+tags: ["R Markdown", "R", "JavaScript"]
+twitterImg: /images/jscars.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I’m a big fan of reproducible and transparent analysis. By using Rmarkdown, R code and most output can be embedded in an html file.</p>
+</div>
+<div id="data-frames-in-javascript" class="section level2">
+<h2>Data Frames in Javascript</h2>
+<p>Javascript doesn’t have a built in data frame object type. Instead, it has JSON (JavaScript Object Notation) which is a bit more flexible than R data frames in the sense that it doesn’t require rectangular data. As text, JSON stores data. In the context of JavaScript code, JSON defines an object.</p>
+<p>A pretty common format for storing data frames in JSON is to use an array of objects. Here’s an example in JavaScript:</p>
+<pre class="js"><code>data_js = [
+    {col_name: &quot;a&quot;, col_2: 1},
+    {col_name: &quot;b&quot;, col_2: 2},
+    {col_name: &quot;c&quot;, col_2: 3}
+]</code></pre>
+<script type="text/javascript">
+data_js = [
+    {col_name: "a", col_2: 1},
+    {col_name: "b", col_2: 2},
+    {col_name: "c", col_2: 3}
+]
+</script>
+<p>And the analogous R code:</p>
+<pre class="r"><code>data_r &lt;- data.frame(
+    col_name = c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;),
+    col_2 = 1:3
+)</code></pre>
+<p>It may be useful to embed an R dataframe in a Rmarkdown web page. Perhaps you want to offer some type of interactivity via javascript on a static web page, or just want to be as transparent as possible. Either way this is possible as long as the data isn’t unreasonable big.</p>
+<p>Furthermore, JSON doesn’t the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use the format define above. The following codes allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using <code>.</code> instead of the familiar <code>$</code> in R.</p>
+</div>
+<div id="javascript-code" class="section level2">
+<h2>JavaScript Code</h2>
+<p>We need two functions:</p>
+<p><code>DataFrame</code>: This is an object constructor for our data frame class in JavaScript. It takes data in the format described above and has some object for automatically detectinc columns names if they aren’t suppied.
+<code>as_DataFrame</code>: This is a wrapper around <code>DataFrame</code> that creates a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy">proxy</a> for a new data frame object. We can use the proxy to modify the behavior of the <code>.</code> operator for the object. Normally, the <code>.</code> would access object attributes, but here we’ve modified it to access columns in meaningful way without changing the underlying object structure.</p>
+<pre class="js"><code>function DataFrame(data, names=&quot;&quot;) {
+    this.data = data;
+    var col_names;
+    if (names === &quot;&quot;) {
+        this.col_names = Array(0);
+        for (var x in data[0]) {
+            this.col_names.push(x);
+        }
+    }
+    else {
+        this.col_names = names;
+    }
+}
+
+function as_DataFrame(data, names=&quot;&quot;) {
+    var DF = new DataFrame(data, names);
+    var handler = {
+        get : function(target, prop, receiver) {
+            if (target.col_names.includes(prop)) {
+                var x = Array(0);
+                for (var r in target.data) {
+                    x.push(target.data[r][prop]);
+                }
+                return(x);
+            }
+            else {
+                return(Reflect.get(...arguments));
+            }
+        }
+    };
+    var proxy = new Proxy(DF, handler);
+    return(proxy);
+}</code></pre>
+<script type="text/javascript">
+function DataFrame(data, names="") {
+    this.data = data;
+    var col_names;
+    if (names === "") {
+        this.col_names = Array(0);
+        for (var x in data[0]) {
+            this.col_names.push(x);
+        }
+    }
+    else {
+        this.col_names = names;
+    }
+}
+
+function as_DataFrame(data, names="") {
+    var DF = new DataFrame(data, names);
+    var handler = {
+        get : function(target, prop, receiver) {
+            if (target.col_names.includes(prop)) {
+                var x = Array(0);
+                for (var r in target.data) {
+                    x.push(target.data[r][prop]);
+                }
+                return(x);
+            }
+            else {
+                return(Reflect.get(...arguments));
+            }
+        }
+    };
+    var proxy = new Proxy(DF, handler);
+    return(proxy);
+}
+</script>
+</div>
+<div id="r-code" class="section level2">
+<h2>R Code</h2>
+<p>Here’s the R function to embed data frames.</p>
+<pre class="r"><code>embed_df &lt;- function(df) {
+    var_name &lt;- as.character(substitute(df)) # Get name of argument
+    json &lt;- as.character(jsonlite::toJSON(df)) # Convert data frame to JSON text
+    js_code &lt;- sprintf(&quot;%s = as_DataFrame(%s);&quot;, var_name, json) # Write JavaScript code 
+    htmltools::tags$script(js_code) # Run the code in the document via a &lt;script&gt; tag
+}</code></pre>
+<p>Now we just call our function on the data frame we want to embed:</p>
+<pre class="r"><code>embed_df(mtcars)</code></pre>
+<script>mtcars = as_DataFrame([{"mpg":21,"cyl":6,"disp":160,"hp":110,"drat":3.9,"wt":2.62,"qsec":16.46,"vs":0,"am":1,"gear":4,"carb":4,"_row":"Mazda RX4"},{"mpg":21,"cyl":6,"disp":160,"hp":110,"drat":3.9,"wt":2.875,"qsec":17.02,"vs":0,"am":1,"gear":4,"carb":4,"_row":"Mazda RX4 Wag"},{"mpg":22.8,"cyl":4,"disp":108,"hp":93,"drat":3.85,"wt":2.32,"qsec":18.61,"vs":1,"am":1,"gear":4,"carb":1,"_row":"Datsun 710"},{"mpg":21.4,"cyl":6,"disp":258,"hp":110,"drat":3.08,"wt":3.215,"qsec":19.44,"vs":1,"am":0,"gear":3,"carb":1,"_row":"Hornet 4 Drive"},{"mpg":18.7,"cyl":8,"disp":360,"hp":175,"drat":3.15,"wt":3.44,"qsec":17.02,"vs":0,"am":0,"gear":3,"carb":2,"_row":"Hornet Sportabout"},{"mpg":18.1,"cyl":6,"disp":225,"hp":105,"drat":2.76,"wt":3.46,"qsec":20.22,"vs":1,"am":0,"gear":3,"carb":1,"_row":"Valiant"},{"mpg":14.3,"cyl":8,"disp":360,"hp":245,"drat":3.21,"wt":3.57,"qsec":15.84,"vs":0,"am":0,"gear":3,"carb":4,"_row":"Duster 360"},{"mpg":24.4,"cyl":4,"disp":146.7,"hp":62,"drat":3.69,"wt":3.19,"qsec":20,"vs":1,"am":0,"gear":4,"carb":2,"_row":"Merc 240D"},{"mpg":22.8,"cyl":4,"disp":140.8,"hp":95,"drat":3.92,"wt":3.15,"qsec":22.9,"vs":1,"am":0,"gear":4,"carb":2,"_row":"Merc 230"},{"mpg":19.2,"cyl":6,"disp":167.6,"hp":123,"drat":3.92,"wt":3.44,"qsec":18.3,"vs":1,"am":0,"gear":4,"carb":4,"_row":"Merc 280"},{"mpg":17.8,"cyl":6,"disp":167.6,"hp":123,"drat":3.92,"wt":3.44,"qsec":18.9,"vs":1,"am":0,"gear":4,"carb":4,"_row":"Merc 280C"},{"mpg":16.4,"cyl":8,"disp":275.8,"hp":180,"drat":3.07,"wt":4.07,"qsec":17.4,"vs":0,"am":0,"gear":3,"carb":3,"_row":"Merc 450SE"},{"mpg":17.3,"cyl":8,"disp":275.8,"hp":180,"drat":3.07,"wt":3.73,"qsec":17.6,"vs":0,"am":0,"gear":3,"carb":3,"_row":"Merc 450SL"},{"mpg":15.2,"cyl":8,"disp":275.8,"hp":180,"drat":3.07,"wt":3.78,"qsec":18,"vs":0,"am":0,"gear":3,"carb":3,"_row":"Merc 450SLC"},{"mpg":10.4,"cyl":8,"disp":472,"hp":205,"drat":2.93,"wt":5.25,"qsec":17.98,"vs":0,"am":0,"gear":3,"carb":4,"_row":"Cadillac Fleetwood"},{"mpg":10.4,"cyl":8,"disp":460,"hp":215,"drat":3,"wt":5.424,"qsec":17.82,"vs":0,"am":0,"gear":3,"carb":4,"_row":"Lincoln Continental"},{"mpg":14.7,"cyl":8,"disp":440,"hp":230,"drat":3.23,"wt":5.345,"qsec":17.42,"vs":0,"am":0,"gear":3,"carb":4,"_row":"Chrysler Imperial"},{"mpg":32.4,"cyl":4,"disp":78.7,"hp":66,"drat":4.08,"wt":2.2,"qsec":19.47,"vs":1,"am":1,"gear":4,"carb":1,"_row":"Fiat 128"},{"mpg":30.4,"cyl":4,"disp":75.7,"hp":52,"drat":4.93,"wt":1.615,"qsec":18.52,"vs":1,"am":1,"gear":4,"carb":2,"_row":"Honda Civic"},{"mpg":33.9,"cyl":4,"disp":71.1,"hp":65,"drat":4.22,"wt":1.835,"qsec":19.9,"vs":1,"am":1,"gear":4,"carb":1,"_row":"Toyota Corolla"},{"mpg":21.5,"cyl":4,"disp":120.1,"hp":97,"drat":3.7,"wt":2.465,"qsec":20.01,"vs":1,"am":0,"gear":3,"carb":1,"_row":"Toyota Corona"},{"mpg":15.5,"cyl":8,"disp":318,"hp":150,"drat":2.76,"wt":3.52,"qsec":16.87,"vs":0,"am":0,"gear":3,"carb":2,"_row":"Dodge Challenger"},{"mpg":15.2,"cyl":8,"disp":304,"hp":150,"drat":3.15,"wt":3.435,"qsec":17.3,"vs":0,"am":0,"gear":3,"carb":2,"_row":"AMC Javelin"},{"mpg":13.3,"cyl":8,"disp":350,"hp":245,"drat":3.73,"wt":3.84,"qsec":15.41,"vs":0,"am":0,"gear":3,"carb":4,"_row":"Camaro Z28"},{"mpg":19.2,"cyl":8,"disp":400,"hp":175,"drat":3.08,"wt":3.845,"qsec":17.05,"vs":0,"am":0,"gear":3,"carb":2,"_row":"Pontiac Firebird"},{"mpg":27.3,"cyl":4,"disp":79,"hp":66,"drat":4.08,"wt":1.935,"qsec":18.9,"vs":1,"am":1,"gear":4,"carb":1,"_row":"Fiat X1-9"},{"mpg":26,"cyl":4,"disp":120.3,"hp":91,"drat":4.43,"wt":2.14,"qsec":16.7,"vs":0,"am":1,"gear":5,"carb":2,"_row":"Porsche 914-2"},{"mpg":30.4,"cyl":4,"disp":95.1,"hp":113,"drat":3.77,"wt":1.513,"qsec":16.9,"vs":1,"am":1,"gear":5,"carb":2,"_row":"Lotus Europa"},{"mpg":15.8,"cyl":8,"disp":351,"hp":264,"drat":4.22,"wt":3.17,"qsec":14.5,"vs":0,"am":1,"gear":5,"carb":4,"_row":"Ford Pantera L"},{"mpg":19.7,"cyl":6,"disp":145,"hp":175,"drat":3.62,"wt":2.77,"qsec":15.5,"vs":0,"am":1,"gear":5,"carb":6,"_row":"Ferrari Dino"},{"mpg":15,"cyl":8,"disp":301,"hp":335,"drat":3.54,"wt":3.57,"qsec":14.6,"vs":0,"am":1,"gear":5,"carb":8,"_row":"Maserati Bora"},{"mpg":21.4,"cyl":4,"disp":121,"hp":109,"drat":4.11,"wt":2.78,"qsec":18.6,"vs":1,"am":1,"gear":4,"carb":2,"_row":"Volvo 142E"}]);</script>
+<p>Now, we can test it out in javascript. This document runs the following code:</p>
+<pre class="js"><code>console.log(mtcars)
+console.log(mtcars.data)
+console.log(mtcars.mpg)</code></pre>
+<script type="text/javascript">
+console.log(mtcars)
+console.log(mtcars.data)
+console.log(mtcars.mpg)
+</script>
+<p>Check your javascript console to see what happened! (Ctrl + Shift + J in Chrome)</p>
+</div>
