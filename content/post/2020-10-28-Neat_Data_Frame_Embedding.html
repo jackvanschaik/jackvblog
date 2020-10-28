@@ -12,7 +12,6 @@ twitterImg: /images/jscars.png
 
 <p>R users can publish their analysis and results to the web with Rmarkdown, Shiny, and a whole host of R packages. In the interest of reproducibility and transparency, this post offers a method of embedding R data frames in a web page created by Rmarkdown.</p>
 <p>Why? You want to supply your data to some javascript library or directly to the users. This should be easy enough if the data isn’t too big. While Shiny makes this easier, the user may be limited to static web pages.</p>
-<p>JSON doesn’t the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use a particular JSON format for rectangular data. The following code allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using <code>.</code>– quite like the familiar <code>$</code> in R.</p>
 <div id="data-frames-in-javascript" class="section level2">
 <h2>Data Frames in Javascript</h2>
 <p>Javascript doesn’t have a built in data frame object. It does have has <a href="https://www.w3schools.com/js/js_json_intro.asp">JSON (JavaScript Object Notation)</a>, which is a bit more flexible. In the context of JavaScript code, JSON defines an object. Anywhere else, it’s a storage format.</p>
@@ -43,6 +42,7 @@ data_js = [
 </div>
 <div id="javascript-code" class="section level2">
 <h2>JavaScript Code</h2>
+<p>JSON doesn’t the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use a particular JSON format for rectangular data. The following code allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using <code>.</code>– quite like the familiar <code>$</code> in R.</p>
 <p>We need two functions:</p>
 <ul>
 <li><code>DataFrame</code>: This is an object constructor for our data frame class in JavaScript. It takes data in the format described above and has some object for automatically detecting columns names if they aren’t supplied.</li>

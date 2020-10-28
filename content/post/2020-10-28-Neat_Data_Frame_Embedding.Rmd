@@ -17,7 +17,6 @@ R users can publish their analysis and results to the web with Rmarkdown, Shiny,
 
 Why? You want to supply your data to some javascript library or directly to the users. This should be easy enough if the data isn't too big. While Shiny makes this easier, the user may be limited to static web pages. 
 
-JSON doesn't the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use a particular JSON format for rectangular data. The following code allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using `.`-- quite like the familiar `$` in R. 
 
 ## Data Frames in Javascript
 
@@ -46,6 +45,8 @@ data_r <- data.frame(
 ```
 
 ## JavaScript Code
+
+JSON doesn't the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use a particular JSON format for rectangular data. The following code allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using `.`-- quite like the familiar `$` in R. 
 
 We need two functions:
 
