@@ -2,7 +2,7 @@
 title: "Neatly Embedding R Data Frames via JavaScript"
 author: "Jack VanSchaik"
 description: "Embed R data frames in web pages via JavaScript and json"
-date: 2020-10-128
+date: 2020-10-28
 categories: ["R"]
 tags: ["R Markdown", "R", "JavaScript"]
 twitterImg: /images/jscars.png
@@ -13,26 +13,30 @@ twitterImg: /images/jscars.png
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+R users can publish their analysis and results to the web with Rmarkdown, Shiny, and a whole host of R packages. In the interest of reproducibility and transparency, this post offers a method of embedding R data frames in a web page created by Rmarkdown. 
 
-## Introduction
+Why? You want to supply your data to some javascript library or directly to the users. This should be easy enough if the data isn't too big. While Shiny makes this easier, the user may be limited to static web pages. 
 
-I'm a big fan of reproducible and transparent analysis. By using Rmarkdown, R code and most output can be embedded in an html file. 
+JSON doesn't the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use a particular JSON format for rectangular data. The following code allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using `.`-- quite like the familiar `$` in R. 
 
 ## Data Frames in Javascript
 
-Javascript doesn't have a built in data frame object type. Instead, it has JSON (JavaScript Object Notation) which is a bit more flexible than R data frames in the sense that it doesn't require rectangular data. As text, JSON stores data. In the context of JavaScript code, JSON defines an object.
+Javascript doesn't have a built in data frame object. It does have has [JSON (JavaScript Object Notation)](https://www.w3schools.com/js/js_json_intro.asp), which is a bit more flexible. In the context of JavaScript code, JSON defines an object. Anywhere else, it's a storage format. 
 
-A pretty common format for storing data frames in JSON is to use an array of objects. Here's an example in JavaScript:
+A standard format for storing data frames in JSON is to use an array of objects. Here's an example in JavaScript:
 
 ```{js}
+// this saves the object to a variable called "data_js"
+// the actual JSON is the "[...]" component
 data_js = [
     {col_name: "a", col_2: 1},
     {col_name: "b", col_2: 2},
     {col_name: "c", col_2: 3}
 ]
+;
 ```
 
-And the analogous R code:
+... and here's the analogous R code:
 
 ```{r}
 data_r <- data.frame(
@@ -41,16 +45,12 @@ data_r <- data.frame(
 )
 ```
 
-It may be useful to embed an R dataframe in a Rmarkdown web page. Perhaps you want to offer some type of interactivity via javascript on a static web page, or just want to be as transparent as possible. Either way this is possible as long as the data isn't unreasonable big.
-
-Furthermore, JSON doesn't the same concept of columns as an R data frame. We could restructure the object entirely, but JavaScript libraries often use the format define above. The following codes allows you to embed R data frames in your markdown html files and extract columns in a familiar way by using `.` instead of the familiar `$` in R. 
-
 ## JavaScript Code
 
 We need two functions:
 
-`DataFrame`: This is an object constructor for our data frame class in JavaScript. It takes data in the format described above and has some object for automatically detectinc columns names if they aren't suppied.
-`as_DataFrame`: This is a wrapper around `DataFrame` that creates a [proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) for a new data frame object. We can use the proxy to modify the behavior of the `.` operator for the object. Normally, the `.` would access object attributes, but here we've modified it to access columns in meaningful way without changing the underlying object structure.
+* `DataFrame`: This is an object constructor for our data frame class in JavaScript. It takes data in the format described above and has some object for automatically detecting columns names if they aren't supplied.
+* `as_DataFrame`: This is a wrapper around `DataFrame` that creates a [proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) for a new data frame object. We can use the proxy to modify the behavior of the `.` operator for the object. Normally, the `.` would access object attributes, but here we've modified it to access columns in meaningful way without changing the underlying object structure.
 
 ```{js}
 function DataFrame(data, names="") {
