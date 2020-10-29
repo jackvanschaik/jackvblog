@@ -1,10 +1,11 @@
 ---
-title: "WFYI WEb Scraper"
+title: "WFYI Web Scraper"
 author: "Jack VanSchaik"
 description: "Scrape Web Articles from WFYI via an search phrase"
 date: 2020-10-29
 categories: ["R"]
 tags: ["R Markdown", "R"]
+twitterImg: /images/pete.png
 ---
 
 <script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
@@ -18,29 +19,12 @@ tags: ["R Markdown", "R"]
 <script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
 
 
-<p>[WFYI] is Indianapolis’ Public Radio station. They offer some text news articles online. I was interested in Indianapolis news data for another project so I built this scraper. It could come in handy if you’re interested in local news data, or just want to see how a news web scraper works. I’ve built several and they all work in a similar manner. I’ll probably post them later!</p>
+<p><a href="https://www.wfyi.org/">WFYI</a> is Indianapolis’ Public Radio station. They offer some text news articles online. I was interested in Indianapolis news data for another project so I built this scraper. It could come in handy if you’re interested in local news data, or just want to see how a news web scraper works. I’ve built several and they all work in a similar manner. I’ll probably post them later!</p>
 <p>Here’s the R code:</p>
 <div id="web-scraper-code" class="section level2">
 <h2>Web Scraper Code</h2>
-<pre class="r"><code>library(tidyverse) # For easy data manipulation</code></pre>
-<pre><code>## -- Attaching packages ----------------------------------------------------------------------------------------------------------------- tidyverse 1.3.0 --</code></pre>
-<pre><code>## v ggplot2 3.3.2     v purrr   0.3.4
-## v tibble  3.0.3     v dplyr   1.0.2
-## v tidyr   1.1.1     v stringr 1.4.0
-## v readr   1.3.1     v forcats 0.5.0</code></pre>
-<pre><code>## -- Conflicts -------------------------------------------------------------------------------------------------------------------- tidyverse_conflicts() --
-## x dplyr::filter() masks stats::filter()
-## x dplyr::lag()    masks stats::lag()</code></pre>
-<pre class="r"><code>library(rvest) # Used to actual web scraping</code></pre>
-<pre><code>## Loading required package: xml2</code></pre>
-<pre><code>## 
-## Attaching package: &#39;rvest&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:purrr&#39;:
-## 
-##     pluck</code></pre>
-<pre><code>## The following object is masked from &#39;package:readr&#39;:
-## 
-##     guess_encoding</code></pre>
+<pre class="r"><code>library(tidyverse) # For easy data manipulation
+library(rvest) # Used to do the actual web scraping</code></pre>
 <pre class="r"><code># Get all the articles links on a particular search results page
 get_page_links &lt;- function(q, pg = 1) {
     url &lt;- sprintf(&quot;https://www.wfyi.org/search?q=%s&amp;pg=%s&quot;, q, pg)
@@ -97,6 +81,7 @@ wfyi_scrape &lt;- function(q) {
 <h2>Quick Example</h2>
 <p>Now that the functions are in place, scraping articles for a particular search phrase is quite easy. Keep in mind, it may take a few minutes to get all the web pages and parse them.</p>
 <pre class="r"><code>results &lt;- wfyi_scrape(&quot;Pete Buttigieg&quot;)
+# Print in a nice data table and limit contents to 100 character
 DT::datatable(mutate(results, content=paste0(substr(content, 1, 100), &quot;...&quot;)))</code></pre>
 <div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
 <script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5"],["2020-03-02","2019-07-08","2019-02-10","2018-06-15","2019-11-05"],["Former South Bend Mayor Pete Buttigieg is suspending his campaign for president.Justin Hicks/IPB New...","South Bend Mayor Pete Buttigieg gives an update to the common council on his administration's effort...","South Bend Mayor Pete Buttigieg talks to WNDU's Maureen McFadden at a launch event for his new book ...","In a Saturday, Feb. 25, 2017 photo, South Bend Mayor Pete Buttigieg addresses the Democratic Nationa...","James Mueller hugs a supporter at Corby's Irish Pub after winning the South Bend mayoral election.Ph..."]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>date<\/th>\n      <th>content<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>

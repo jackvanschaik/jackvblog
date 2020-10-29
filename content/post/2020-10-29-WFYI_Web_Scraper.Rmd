@@ -5,6 +5,7 @@ description: "Scrape Web Articles from WFYI via an search phrase"
 date: 2020-10-29
 categories: ["R"]
 tags: ["R Markdown", "R"]
+twitterImg: /images/pete.png
 ---
 
 
@@ -12,16 +13,19 @@ tags: ["R Markdown", "R"]
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-[WFYI] is Indianapolis' Public Radio station. They offer some text news articles online. I was interested in Indianapolis news data for another project so I built this scraper. It could come in handy if you're interested in local news data, or just want to see how a news web scraper works. I've built several and they all work in a similar manner. I'll probably post them later!
+[WFYI](https://www.wfyi.org/) is Indianapolis' Public Radio station. They offer some text news articles online. I was interested in Indianapolis news data for another project so I built this scraper. It could come in handy if you're interested in local news data, or just want to see how a news web scraper works. I've built several and they all work in a similar manner. I'll probably post them later!
 
 Here's the R code:
 
 ## Web Scraper Code
 
-```{r}
+```{r, results="hide", message=FALSE}
 library(tidyverse) # For easy data manipulation
-library(rvest) # Used to actual web scraping
+library(rvest) # Used to do the actual web scraping
+```
 
+
+```{r}
 # Get all the articles links on a particular search results page
 get_page_links <- function(q, pg = 1) {
     url <- sprintf("https://www.wfyi.org/search?q=%s&pg=%s", q, pg)
@@ -81,6 +85,7 @@ Now that the functions are in place, scraping articles for a particular search p
 
 ```{r}
 results <- wfyi_scrape("Pete Buttigieg")
+# Print in a nice data table and limit contents to 100 character
 DT::datatable(mutate(results, content=paste0(substr(content, 1, 100), "...")))
 ```
 
