@@ -1,5 +1,5 @@
 ---
-title: "WFYI WEb Scraper"
+title: "WFYI Web Scraper"
 author: "Jack VanSchaik"
 description: "Scrape Web Articles from WFYI via an search phrase"
 date: 2020-10-29
