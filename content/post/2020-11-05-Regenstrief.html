@@ -1,0 +1,243 @@
+---
+title: "Data Explanation: Regenstrief COVID Hospitalizations"
+author: "Jack VanSchaik"
+date: 2020-11-04
+categories: ["R"]
+tags: ["COVID-19", "R", "Data"]
+twitterImg: /images/ri_hosp.png
+---
+
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/datatables-binding/datatables.js"></script>
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/dt-core/js/jquery.dataTables.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The Regenstrief Institute is a clinical research think tank closely affiliated with Indiana University and IU Health, situated on IUPUI’s campus next to Riley Hospital. Notably, they have a <a href="https://www.regenstrief.org/data-downloads/">COVID data dashboard</a>. They describe it:</p>
+<blockquote>
+<p>“The Regenstrief Institute COVID Dashboard was developed to supplement data maintained by the State of Indiana. Additional Data available from Indiana Management Performance Hub.”</p>
+</blockquote>
+<p>The key difference between Regenstrief’s data and <a href="https://www.coronavirus.in.gov/2393.htm">the State’s data</a> is that Regenstrief has direct access to electronic health records. The state relies on various organizations (health departments, hospitals) to send data via reporting systems such as <a href="https://www.cdc.gov/nbs/overview/index.html">NBS</a> and <a href="https://www.in.gov/isdh/27344.htm">ESSENCE</a>.</p>
+<p>Regenstrief has access to a wealth of personal health information from patients statewide via the <a href="https://www.regenstrief.org/rds/data/">INPC</a> as well as Eskenazi and IU Health’s electronic medical record systems. These data are typically used for IRB approved research studies, but there’s some legal leeway since Regenstrief is <a href="https://www.regenstrief.org/article/indiana-leaders-recognize-regenstrief-september-2020/">friendly with the state</a>.</p>
+<p>Recently, they’ve made data available for download. I want to provide some context for this data. I’m in a unique posititon to do this, as I worked for Regenstrief as a Data Analyst for 2 years, and became very familiar with the dashboard and the data behind it.</p>
+</div>
+<div id="about-the-dashboard" class="section level2">
+<h2>About The Dashboard</h2>
+<p>Keep in mind, the data and the dashboard are not the same. Data is never raw, and dashboards are a way of cooking data up for consumption. Usually, dashboards deep fry data.</p>
+<p>The data behind this dashboard are “are updated daily by 12 noon.” by a daily ETL process that kicks off early morning. There are several steps between the source data and the dashboard. Regenstrief combines several data sources (including the INPC), transforms the data, and deposits an extract into a secure database that feeds into the Tableau dashboard you see on the website. The Tableau dashboard itself does some of its own calculation and aggregation. The data being sent to Regenstrief is not exactly what is displayed on the dashboard.</p>
+<p>There are a <em>lot</em> of data elements on the dashboard, and Regenstrief provides varying levels of context for these. I’ll discuss these, but my main focus is the data made available for download.</p>
+<div id="adding-a-bit-more-nuance" class="section level4">
+<h4>Adding a Bit More Nuance</h4>
+<p>The web page has this note about “Data Delay” in the “Trends” section:</p>
+<blockquote>
+<p>“Receipt of clinical data can be delayed up to three days after the clinical event. Because of this delay, initial counts may be lower than actual counts, which may bias the trend indicator toward green. To avoid this bias, the trend indicator color will not reflect the most recent three days.”</p>
+</blockquote>
+<p>Really, it’s more like 5 days, from my personal experience. Not sure where they got three days from. Unless they explain where that number comes from, it’s probably safer to go with a more conservative 5 days delay. By their own logic then, all their trend indicators are biased towards green. For this reason, I don’t really take the colors on the trends page seriously. The numbers themselves may still be meaningful, if you’re mindful of the delay.</p>
+<p>I also want to highlight how important the “COVID-19 Test Results” section is. This should really be situated at the top of the dashboard. The most important thing to remember, is that:</p>
+<blockquote>
+<p>“graphs continue to reflect only those data that are presently in the INPC data resource.”</p>
+</blockquote>
+<p>Which is <strong>not all of Indiana</strong>. The INPC does not cover all of Indiana. Regenstrief has several notable data gaps. Notably, they have practically no clinical data on patients in Fort Wayne and Allen county. The best coverage is in Indianapolis, Marion County, and the “donut” counties around Marion.</p>
+<p>Regenstrief should be providing information about the coverage of their data sources. Until they do, the data should be used very carefully– particularly when comparing Regenstrief’s data to the State’s data. They are not necessarily reporting on the same population.</p>
+</div>
+</div>
+<div id="regenstriefs-dashboard-data" class="section level2">
+<h2>Regenstrief’s Dashboard Data</h2>
+<div id="the-data-download-page" class="section level4">
+<h4>The Data Download Page</h4>
+<p>There’s a big orange “DATA DOWNLOAD” button at the top right of Regenstrief’s dashboard. This button guides the user to fill out some personal information and complete a captcha before they can download the dataset. Currently the download page is sparse, and provides a link to download a single “hospitalizations dataset”, with the following description:</p>
+<blockquote>
+<p>“Daily counts of Indiana COVID-19 ED visits and hospitalizations by county.”</p>
+</blockquote>
+<p>There is no data dictionary or further context available. They <em>should</em> be providing a detailed data dictionary that makes variable made available. Releasing data without context is irresponsible and <a href="https://web.jackv.xyz/2020/09/22/ethics-of-the-health-information-exchange-in-the-era-of-data-science/">can erode patient trust</a>.</p>
+<p>I’ll be using R to handle the data as I provide additional context.</p>
+</div>
+<div id="read-the-data-in" class="section level4">
+<h4>Read The Data In</h4>
+<p>The data is a standard CSV. I’ll read it in.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre class="r"><code>ri_hosp &lt;- read_csv(&quot;C:/Users/Jack/Documents/data/regenstrief_dashboard/RI Hosp Data through 11022020.csv&quot;)
+## Parsed with column specification:
+## cols(
+##   Date = col_date(format = &quot;&quot;),
+##   County = col_character(),
+##   `ED Visit Count` = col_double(),
+##   `Hospitalization Count` = col_double()
+## )</code></pre>
+</div>
+<div id="column-descriptions-and-summaries" class="section level4">
+<h4>Column Descriptions and Summaries</h4>
+<p>I’ll go column by column, summarize, and provide some context for each variable.</p>
+<p><strong>Date</strong></p>
+<p>The data goes back to March 1st 2020. Indiana’s first COVID case was reported on March 6th 2020. Hypothetically, it’s possible for patients to have been hospitalized a before positive test, which is why you might see some counts before March 6th. In general, the date refers to a hospitalization or ED visit date, and doesn’t necessarily coincide with a positive test result.</p>
+<p>The usual practice at Regenstrief is to use the ED or inpatient time to determine the <code>Date</code> field. EHR data is generally messy though, and this field can come up missing. You’re left to assume <code>Date</code> refers to an admit date. If not, some surrogate may be used. Source institutions have notably sent huge batches of incorrect admit dates.</p>
+<p>I download this data on 11/5, but it only goes up through 11/1. There is no indication as to the update frequency. Curiously, the filename mentions 11/2. I have no idea what’s going on here.</p>
+<pre class="r"><code>summary(ri_hosp$Date)
+##         Min.      1st Qu.       Median         Mean      3rd Qu.         Max. 
+## &quot;2020-03-01&quot; &quot;2020-05-01&quot; &quot;2020-07-01&quot; &quot;2020-07-01&quot; &quot;2020-09-01&quot; &quot;2020-11-01&quot;</code></pre>
+<p><strong>County</strong></p>
+<p>Each of Indiana’s 92 counties has counts available for all 246 days in the date range. Keep in mind the geographic discrepancies in data completeness mentioned above. Although every county has data available on each day, everybody in that county may not be represented.</p>
+<pre class="r"><code>DT::datatable(count(ri_hosp, County)) </code></pre>
+<div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89","90","91","92"],["Adams","Allen","Bartholomew","Benton","Blackford","Boone","Brown","Carroll","Cass","Clark","Clay","Clinton","Crawford","Daviess","De Kalb","Dearborn","Decatur","Delaware","Dubois","Elkhart","Fayette","Floyd","Fountain","Franklin","Fulton","Gibson","Grant","Greene","Hamilton","Hancock","Harrison","Hendricks","Henry","Howard","Huntington","Jackson","Jasper","Jay","Jefferson","Jennings","Johnson","Knox","Kosciusko","La Porte","Lagrange","Lake","Lawrence","Madison","Marion","Marshall","Martin","Miami","Monroe","Montgomery","Morgan","Newton","Noble","Ohio","Orange","Owen","Parke","Perry","Pike","Porter","Posey","Pulaski","Putnam","Randolph","Ripley","Rush","Scott","Shelby","Spencer","St Joseph","Starke","Steuben","Sullivan","Switzerland","Tippecanoe","Tipton","Union","Vanderburgh","Vermillion","Vigo","Wabash","Warren","Warrick","Washington","Wayne","Wells","White","Whitley"],[246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246,246]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>County<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":2},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<p><strong>ED Visit Count</strong></p>
+<p>The INPC can receive ED data directly from healthcare institutions, but can also incorporate ESSENCE data (the system Indiana uses to report ED data). This means that ED data should be a bit more robust to the aforementioned geographic issues. On the other hand, the ED population may not be the same as the hospitalized population. Comparisons between the two columns may not always be valid. If I had to guess, I’d venture to guess the ED column is less likely to undercount than the hospitalization column. There’s no way to know for sure, and to my knowledge Regenstrief has not published an analysis of this issue.</p>
+<p>The <em>most important thing</em> about this column is that these ED visits aren’t necessarily for COVID. Around the time I left, this visit date was the first ED admit for patients within 21 days of their COVID diagnosis time. These patients aren’t necessarily being admitted for COVID, although they might be experiencing symptoms. They were at some point diagnosed positive, but not neccesarily on the ED visit date.</p>
+<p>Here are some quick visualizations, just to show what happening in this column</p>
+<pre class="r"><code>ri_hosp %&gt;%
+    group_by(Date) %&gt;%
+    summarise(`Total ED Visits` = sum(`ED Visit Count`)) %&gt;%
+    ggplot(aes(x=Date, y=`Total ED Visits`)) +
+    geom_line(alpha=0.5, size=1.5) +
+    theme_minimal() + 
+    theme(legend.position = &quot;none&quot;) +
+    labs(title=&quot;Total Daily ED Visit Counts&quot;)
+## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<p><img src="/post/2020-11-05-Regenstrief_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(ri_hosp, aes(x=Date, y=`ED Visit Count`, color=County)) + 
+    geom_line(alpha=0.5, size=1.5) +
+    theme_minimal() +
+    theme(legend.position = &quot;none&quot;) +
+    labs(title=&quot;Daily ED Visit Counts By County&quot;)</code></pre>
+<p><img src="/post/2020-11-05-Regenstrief_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p><strong>Hospitalization Count</strong></p>
+<p>The cautions given above should be applied here as well. Regenstrief needs to confirm that the given date is actually the first inpatient admit within 21 days of COVID diagnosis. It’s entirely possible for a patient to be readmitted and not have the additional hospitalization accounted for here. In general, INPC hospitalizations can be duplicated, so they’ll often take a first date as a means of deduplication.</p>
+<pre class="r"><code>ri_hosp %&gt;%
+    group_by(Date) %&gt;%
+    summarise(`Total Hospitalizations` = sum(`Hospitalization Count`)) %&gt;%
+    ggplot(aes(x=Date, y=`Total Hospitalizations`)) +
+    geom_line(alpha=0.5, size=1.5) +
+    theme_minimal() + 
+    theme(legend.position = &quot;none&quot;) +
+    labs(title=&quot;Total Hospitalizations&quot;)
+## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<p><img src="/post/2020-11-05-Regenstrief_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(ri_hosp, aes(x=Date, y=`Hospitalization Count`, color=County)) + 
+    geom_line(alpha=0.5, size=1.5) +
+    theme_minimal() +
+    theme(legend.position = &quot;none&quot;) +
+    labs(title=&quot;Daily Hospitalization Counts By County&quot;)</code></pre>
+<p><img src="/post/2020-11-05-Regenstrief_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+</div>
+<div id="closing-thoughts" class="section level2">
+<h2>Closing Thoughts</h2>
+<p>The Regenstrief dashboard is being used by health professionals and private citizens alike to make important decisions about handling COVID-19. The source data for this dashboard is intentionally and necessarily manipulated, transformed. However, the decisions behind these manipulations are opaque. Regenstrief has made a dataset available for download, but has not provided adaquate context for this data on either the dashboard or the data download page. Regenstrief needs to document and publish each step their COVID data pipeline, so that stakeholders can make meaningful decisions. Publishing data without detailed documentation can potentially lead to misuse and the spread of disinformation. Not to mention, it is inconsiderate to those whose clinical data has been aggregated and studied without consent.</p>
+<p>I hope I was able to add some context to this data and give additional details about each variable. Ultimately, I’d like to see a lot more transparency from Regenstrief with respect to this data. I’d like like to see the same from the State, but I can’t attest to what is missing there.</p>
+</div>
+<div id="attribution" class="section level2">
+<h2>Attribution</h2>
+<p>An attribution is required to use this data for research purposes. I’ll include it to cover all my bases:</p>
+<blockquote>
+<p>“COVID-19 data for this study were derived from the Regenstrief institute public dashboard, <a href="https://doi.org/10.7912/d2/17" class="uri">https://doi.org/10.7912/d2/17</a>.”</p>
+</blockquote>
+</div>
+<div id="r-session-info" class="section level2">
+<h2>R Session Info</h2>
+<pre class="r"><code>session_info()
+## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-11-06                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blob          1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  broom         0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cellranger    1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  colorspace    1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  crosstalk     1.1.0.1 2020-03-13 [1] CRAN (R 4.0.2)
+##  DBI           1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##  dbplyr        1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr       * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  DT            0.15    2020-08-05 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  farver        2.0.3   2020-01-16 [1] CRAN (R 4.0.2)
+##  forcats     * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics      0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  ggplot2     * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  gtable        0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##  haven         2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##  hms           0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  htmlwidgets   1.5.1   2019-10-08 [1] CRAN (R 4.0.2)
+##  httr          1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  labeling      0.3     2014-08-23 [1] CRAN (R 4.0.0)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle     0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate     1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  modelr        0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##  munsell       0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##  pillar        1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr       * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs      0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr       * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  readxl        1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reprex        0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##  reticulate    1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang         0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  rvest         0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##  scales        1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr     * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble      * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr       * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect    1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  tidyverse   * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs         0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  xml2          1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
