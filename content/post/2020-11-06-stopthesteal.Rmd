@@ -15,7 +15,7 @@ knitr::opts_chunk$set(collapse = TRUE)
 
 The "StopTheSteal" hashtag has had a rampant uptake in popularity since the US election on 11/3. It's now 11/6 and votes are still being counted, mostly due to the huge increase in mail-in voting. There is no substantive evidence of voter fraud, but partisan twitter is now rife with election conspiracy theories.
 
-I've done a quick analysis of the conversation around #StopTheSteal as it's developing. The discourse will likely change within hours, so this is snapshot of 11/6 at around 6 pm EST.
+I've done a quick analysis of the conversation around #StopTheSteal as its developing. The discourse will likely change within hours, so this is snapshot of 11/6 at around 6 pm EST.
 
 ## Analysis
 
