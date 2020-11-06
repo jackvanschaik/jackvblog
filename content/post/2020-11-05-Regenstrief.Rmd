@@ -1,7 +1,7 @@
 ---
 title: "Data Explanation: Regenstrief COVID Hospitalizations"
 author: "Jack VanSchaik"
-date: 2020-11-04
+date: 2020-11-05
 categories: ["R"]
 tags: ["COVID-19", "R", "Data"]
 twitterImg: /images/ri_hosp.png
