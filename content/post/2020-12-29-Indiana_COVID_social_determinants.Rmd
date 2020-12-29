@@ -46,8 +46,6 @@ county_trends %>%
         date = as.Date(substr(date, 1, 10))
     ) ->
     county_trends
-
-county_trends
 ```
 
 
@@ -248,7 +246,7 @@ county_trends %>%
 Here's the final dataset, printed out:
 
 ```{r}
-knitr::kable(project_data)
+DT::datatable(project_data)
 ```
 
 ## Session Info
