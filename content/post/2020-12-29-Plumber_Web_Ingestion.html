@@ -1,0 +1,93 @@
+---
+title: "On The Fly Web Page Ingestion with Plumber"
+author: "Jack VanSchaik"
+description: "Web Page Ingestion With Plumber and Userscripts"
+date: 2020-12-29
+categories: ["R", "COVID-19"]
+tags: ["R Markdown", "R", "Indiana", "COVID-19", "Coronavirus", "Dataset"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I’ve been working on a project that needs a large amount of data scraped from an authenticated, interactive site. When web scraping with R, the method depends on the website’s setup. I tend to break it down like so:</p>
+<ul>
+<li><strong>No authentication, no interactivity</strong>: Directly download html, parse clientside. For example, <a href="https://web.jackv.xyz/2020/10/29/wfyi-web-scraper/">WFYI web scraper</a></li>
+<li><strong>Authentication, no interactivity</strong>: Create session via HTTP request headers, then download and parse clientside</li>
+<li><strong>No authentication, w/ interactivity</strong>: Headless browsing may be necessary. RSelenium is popular choice to do this in R.</li>
+<li><strong>Authentication, w/ interactivity</strong>: This is where the trouble begins.</li>
+</ul>
+<p>Even with the combined powers of specialized HTTP requests and headless browsing, it can be quite challenging to scrape some sites automatically. In theory it’s possible to scrape any content available on the web, but in practice deciphering the inner workings of a site can take an impractical amount of time. Authenticated sites can have complicated interactions between the clientside scripts and the server backend. These are often obfuscated, rarely documented. and can occur dozens of time a second. Take for instance, a site that dynamically updates session information via onClick events.</p>
+<p>To save some time, I opted for the following workaround. I used the plumber R package to spin up a quick “sink” function to save HTML to disk. I used the ViolentMonkey user script extension for Firefox to create a script that sends the page’s current HTML to the plumber function. Combined with a key bind or other user scripts, this allows for semi-automated scraping without programmatically accounting for complex interactions between the user session and client side.</p>
+</div>
+<div id="plumber-code" class="section level2">
+<h2>Plumber Code</h2>
+<p>Plumber wraps your R functions in a web API. This will link R with our javascript in our user script. First, we need the plumber script. This is conventionally called <code>plumber.R</code>. The roxygen style comments are necessary directions for plumber. The function takes the contents of a HTTP post request and saves it to a timestamped HTML file:</p>
+<pre class="r"><code>#* Save html working directory
+#* @param req the request object
+#* @post /save
+function(req) {
+    res &lt;- req$postBody
+    html_txt &lt;- jsonlite::fromJSON(res)[[1]]
+    file_path &lt;- sprintf(&quot;%s.html&quot;, format(Sys.time(), &quot;%Y%m%d%H%M%S&quot;))
+    readr::write_file(html_txt, file_path)
+    &quot;success&quot;
+}</code></pre>
+</div>
+<div id="r-script" class="section level2">
+<h2>R Script</h2>
+<p>We need a separate R script to get the API up and running.</p>
+<pre class="r"><code>library(plumber)
+plumbing &lt;- pr(&quot;plumber.R&quot;)
+pr_run(plumbing, port=5728)</code></pre>
+<p>One this is run, it’ll pop open a window with some info about your API.</p>
+</div>
+<div id="user-script" class="section level2">
+<h2>User Script</h2>
+<p>User scripts allow you to inject custom javascript via your web browser. This is usually made possible by browser extensions such as ViolentMonkey, GreaseMonkey, and TamperMonkey. I’ve only tested this on ViolentMonkey for Firefox. You’ll want to look up how to add user scripts for the extension of your choosing– they all have their own quirks.</p>
+<p>Here’s my user script. The <code>faucet</code> function sends <code>data</code> to our plumber <code>save</code> function. The <code>drain_page</code> function calls <code>faucet</code> with the current HTML content of the page. This is bound to a backquote (`).</p>
+<pre class="js"><code>// ==UserScript==
+// @name        Web Scraping Faucet
+// @namespace   Violentmonkey Scripts
+// @grant       none
+// @version     1.0
+// @author      Jack VanSchaik
+// @run-at      document-end 
+// ==/UserScript==
+
+faucet = function(data) {
+    var url = &quot;http://127.0.0.1:5728/save&quot;;
+    return fetch(url, {
+        method: &quot;POST&quot;, 
+        mode:&#39;no-cors&#39;, 
+        credentials: &quot;same-origin&quot;,
+        headers: {
+            &#39;Content-Length&#39; : 0,
+            &#39;Content-Type&#39;: &#39;application/json&#39;
+        },
+        body: JSON.stringify(data)
+    });
+}
+;
+
+drain_page = function() {
+    return faucet({innerhtml: document.documentElement.innerHTML});
+}
+;
+
+document.addEventListener(&#39;keyup&#39;, function(e) {
+    if (e.code == &quot;Backquote&quot;) {
+        drain_page();
+    }
+})
+;</code></pre>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>With the plumber API running and the user script working, you can save the file to disk by just pressing the backquote (`) button. This can be extended for further automation on the javascript side or data processing on the R side.</p>
+<p>In my case, I used a slightly different version of the user script. I bound the backquote to a userscript function that opened 100 links in seperate tabs, that were then downloaded via <code>drain_page</code> via another user script function.</p>
+<p>Having a manual component isn’t always preferable, but in this case saved a lot of time.</p>
+<p>Also shout out to Barret Schloerke, an author of plumber and one of my R inspirations.</p>
+</div>
