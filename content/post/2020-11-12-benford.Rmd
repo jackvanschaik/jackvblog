@@ -20,7 +20,7 @@ Benford's law states that under certain conditions, the distribution of the firs
 
 $P(d) = \log_{10}(1 + \frac{1}{d})$
 
-For this "law" to apply, data must span several orders of magnitude. Even then, it may not be applicable. One could easily synthesize a counterexample with multimodel data across several orders of magnitude. 
+For this "law" to apply, data must span several orders of magnitude. Even then, it may not be applicable. One could easily synthesize a counterexample with multimodal data across several orders of magnitude. 
 
 
 ## Description of Analysis
