@@ -1,0 +1,342 @@
+---
+title: "Kaggle: Credit Card Customers"
+description: "Predicting Credit Card Customer Turnover"
+date: 2020-12-30
+categories: ["R", "Kaggle"]
+tags: ["R Markdown", "R", "Kaggle", "Credit"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I’ve never used Kaggle before, but I know it’s popular site for practicing Data Science. I thought it would be fun to download a dataset and give it a go.</p>
+<p>I found this <a href="https://www.kaggle.com/sakshigoyal7/credit-card-customers">Credit Card customer</a> dataset posted by Sakshi Goyal. It’s rated gold. I don’t know what that means, but it’s probably a good thing.</p>
+<p>Per the description, the goal is to predict customer attrition. There is noted class imbalance in the outcome variable:</p>
+<blockquote>
+<p>We have only 16.07% of customers who have churned. Thus, it’s a bit difficult to train our model to predict churning customers.</p>
+</blockquote>
+</div>
+<div id="data-cleaning" class="section level2">
+<h2>Data Cleaning</h2>
+<p>I downloaded the data, extracted, and saved locally.</p>
+<pre class="r"><code>library(readr)
+library(janitor)
+
+credit &lt;- clean_names(read_csv(&quot;C:/Users/Jack/Documents/data/kaggle/credit_card_customers/BankChurners.csv&quot;))</code></pre>
+<p>Some quick checks:</p>
+<pre class="r"><code>dim(credit)</code></pre>
+<pre><code>## [1] 10127    23</code></pre>
+<pre class="r"><code>sum(apply(credit, 2, anyNA))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>table(credit$attrition_flag)</code></pre>
+<pre><code>## 
+## Attrited Customer Existing Customer 
+##              1627              8500</code></pre>
+<p>The data description advised ignoring the last two columns, so I will. I also want to transform attrition flag so the outcome = 1, just a personal preference.</p>
+<pre class="r"><code>library(dplyr)
+
+credit %&gt;% 
+    mutate(attrition = if_else(attrition_flag == &quot;Attrited Customer&quot;, 1, 0)) %&gt;%
+    select(attrition, customer_age:avg_utilization_ratio) -&gt;
+    credit_2</code></pre>
+<p>Train test split</p>
+<pre class="r"><code>set.seed(1234)
+N &lt;- nrow(credit_2)
+I &lt;- sample(N, floor(N*0.70))
+cred_train &lt;- credit_2[I,]
+cred_test &lt;- credit_2[-I,]</code></pre>
+<p>We just want to quickly make sure the class imbalance is maintained in the training and test set:</p>
+<pre class="r"><code>table(cred_train$attrition)/nrow(cred_train)</code></pre>
+<pre><code>## 
+##         0         1 
+## 0.8367664 0.1632336</code></pre>
+<pre class="r"><code>table(cred_test$attrition)/nrow(cred_test)</code></pre>
+<pre><code>## 
+##         0         1 
+## 0.8453439 0.1546561</code></pre>
+<p>Looks’s good</p>
+</div>
+<div id="logistic-regression" class="section level2">
+<h2>Logistic Regression</h2>
+<p>Logistic regression is a natural first choice. We have a binary outcome, categorical and numeric predictors, and n &gt; p. </p>
+<div id="individual-predictors" class="section level4">
+<h4>Individual Predictors</h4>
+<p>I’ll first run a logistic regression model on each individual predictor. A high performing model based on a single predictive could be helpful from a business perspective.</p>
+<pre class="r"><code>library(pROC)
+library(purrr)
+library(rlang)
+
+log_reg_test_auc &lt;- function(predictor) {
+    reg &lt;- glm(
+        formula(paste0(&quot;attrition ~ &quot;, predictor)), 
+        data = cred_train, 
+        family=&quot;binomial&quot;
+    )
+    
+    y &lt;- cred_test$attrition
+    y_pred &lt;- predict(reg, cred_test, type=&quot;response&quot;)
+    as.numeric(roc(y ~ y_pred)$auc)
+}
+
+data.frame(
+    predictors = names(cred_train[-1])
+) %&gt;%
+    mutate(test_auc = unlist(map(predictors, log_reg_test_auc))) %&gt;%
+    arrange(desc(test_auc)) %&gt;%
+    knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">predictors</th>
+<th align="right">test_auc</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">total_trans_ct</td>
+<td align="right">0.7839154</td>
+</tr>
+<tr class="even">
+<td align="left">total_ct_chng_q4_q1</td>
+<td align="right">0.7397203</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_utilization_ratio</td>
+<td align="right">0.7030449</td>
+</tr>
+<tr class="even">
+<td align="left">total_revolving_bal</td>
+<td align="right">0.7022386</td>
+</tr>
+<tr class="odd">
+<td align="left">total_trans_amt</td>
+<td align="right">0.6582924</td>
+</tr>
+<tr class="even">
+<td align="left">months_inactive_12_mon</td>
+<td align="right">0.6191506</td>
+</tr>
+<tr class="odd">
+<td align="left">contacts_count_12_mon</td>
+<td align="right">0.6156667</td>
+</tr>
+<tr class="even">
+<td align="left">total_relationship_count</td>
+<td align="right">0.6149976</td>
+</tr>
+<tr class="odd">
+<td align="left">total_amt_chng_q4_q1</td>
+<td align="right">0.5671430</td>
+</tr>
+<tr class="even">
+<td align="left">credit_limit</td>
+<td align="right">0.5387720</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_open_to_buy</td>
+<td align="right">0.5261787</td>
+</tr>
+<tr class="even">
+<td align="left">gender</td>
+<td align="right">0.5209184</td>
+</tr>
+<tr class="odd">
+<td align="left">income_category</td>
+<td align="right">0.5144588</td>
+</tr>
+<tr class="even">
+<td align="left">marital_status</td>
+<td align="right">0.5081615</td>
+</tr>
+<tr class="odd">
+<td align="left">customer_age</td>
+<td align="right">0.5068766</td>
+</tr>
+<tr class="even">
+<td align="left">months_on_book</td>
+<td align="right">0.5067172</td>
+</tr>
+<tr class="odd">
+<td align="left">dependent_count</td>
+<td align="right">0.5020689</td>
+</tr>
+<tr class="even">
+<td align="left">education_level</td>
+<td align="right">0.5012419</td>
+</tr>
+<tr class="odd">
+<td align="left">card_category</td>
+<td align="right">0.4994488</td>
+</tr>
+</tbody>
+</table>
+<p>So it looks like <code>total_trans_ct</code> alone has the best AUC and decent predictive power. Let see how this compares to a logistic regression model with all predictors</p>
+</div>
+<div id="all-predictors" class="section level4">
+<h4>All Predictors</h4>
+<pre class="r"><code>reg &lt;- glm(attrition ~ ., data = cred_train, family=&quot;binomial&quot;)
+y &lt;- cred_test$attrition
+y_pred &lt;- predict(reg, cred_test, type=&quot;response&quot;)</code></pre>
+<pre><code>## Warning in predict.lm(object, newdata, se.fit, scale = 1, type = if (type == :
+## prediction from a rank-deficient fit may be misleading</code></pre>
+<pre class="r"><code>roc(y ~ y_pred)$auc</code></pre>
+<pre><code>## Area under the curve: 0.9223</code></pre>
+<p>We got a warning there, letting us know we have a rank-deficient fit. This just means we have correlated predictors. Let’s identify and remove them.</p>
+</div>
+<div id="removing-correlated-predictors" class="section level4">
+<h4>Removing Correlated Predictors</h4>
+<pre class="r"><code>rowSums(abs(cor(model.matrix(~., data=cred_train)[,-1])) &gt; 0.95)</code></pre>
+<pre><code>##                     attrition                  customer_age 
+##                             1                             1 
+##                       genderM               dependent_count 
+##                             1                             1 
+##      education_levelDoctorate       education_levelGraduate 
+##                             1                             1 
+##    education_levelHigh School  education_levelPost-Graduate 
+##                             1                             1 
+##     education_levelUneducated        education_levelUnknown 
+##                             1                             1 
+##         marital_statusMarried          marital_statusSingle 
+##                             1                             1 
+##         marital_statusUnknown    income_category$40K - $60K 
+##                             1                             1 
+##    income_category$60K - $80K   income_category$80K - $120K 
+##                             1                             1 
+## income_categoryLess than $40K        income_categoryUnknown 
+##                             1                             1 
+##             card_categoryGold         card_categoryPlatinum 
+##                             1                             1 
+##           card_categorySilver                months_on_book 
+##                             1                             1 
+##      total_relationship_count        months_inactive_12_mon 
+##                             1                             1 
+##         contacts_count_12_mon                  credit_limit 
+##                             1                             2 
+##           total_revolving_bal               avg_open_to_buy 
+##                             1                             2 
+##          total_amt_chng_q4_q1               total_trans_amt 
+##                             1                             1 
+##                total_trans_ct           total_ct_chng_q4_q1 
+##                             1                             1 
+##         avg_utilization_ratio 
+##                             1</code></pre>
+<pre class="r"><code>cred_train_2 &lt;- select(cred_train, -avg_open_to_buy)
+
+reg &lt;- glm(attrition ~ ., data = cred_train_2, family=&quot;binomial&quot;)
+y &lt;- cred_test$attrition
+y_pred &lt;- predict(reg, cred_test, type=&quot;response&quot;)
+log_roc &lt;- roc(y ~ y_pred)
+log_roc$auc</code></pre>
+<pre><code>## Area under the curve: 0.9223</code></pre>
+<p>There we go, no longer rank-deficient.</p>
+</div>
+<div id="performance-evaluation" class="section level4">
+<h4>Performance Evaluation</h4>
+<p>Let’s take a closer look at the model performance.</p>
+<pre class="r"><code>library(ROCR)
+
+perf &lt;- performance(prediction(y_pred, y), &quot;tpr&quot;, &quot;fpr&quot;)
+plot(perf, main=&quot;Test ROC Curve for Logistic Regression&quot;)
+abline(a = 0, b = 1, col = &quot;gray60&quot;)</code></pre>
+<p><img src="/post/2020-12-30-Kaggle_Credit_Cards_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<pre class="r"><code>plot(performance(prediction(y_pred, y), &quot;acc&quot;), main=&quot;Testing Accuracy vs Cutoff&quot;)
+baseline_acc &lt;- max(table(cred_test$attrition)/nrow(cred_test))
+abline(h=baseline_acc, col = &quot;gray60&quot;)</code></pre>
+<p><img src="/post/2020-12-30-Kaggle_Credit_Cards_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Best accuracy vs baseline</p>
+<pre class="r"><code>baseline_acc</code></pre>
+<pre><code>## [1] 0.8453439</code></pre>
+<pre class="r"><code>max(unlist(performance(prediction(y_pred, y), &quot;acc&quot;)@y.values))</code></pre>
+<pre><code>## [1] 0.9072063</code></pre>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Due to class imbalance, always prediction customer attrition results in a baseline accuracy of 84.5%. Using logistic regression, we can improve accuracy by about 6%. Most of the predictive power seems to come from credit card utilization variables rather than demographic variables.</p>
+<p>While more sophisticated models could probably perform better, this is a good starting point. I’ll probably come back to other models later. Logistic regression has the advantage of (somewhat) interpretable coefficients.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-12-30                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr       * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics      0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  highr         0.8     2019-03-20 [1] CRAN (R 4.0.2)
+##  hms           0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  janitor     * 2.0.1   2020-04-12 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle     0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate     1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  pillar        1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  plyr          1.8.6   2020-03-03 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  pROC        * 1.16.2  2020-03-19 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr       * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs      0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr       * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reticulate    1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang       * 0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  ROCR        * 1.0-11  2020-05-02 [1] CRAN (R 4.0.2)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  snakecase     0.11.0  2019-05-25 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr       1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble        3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyselect    1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs         0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
