@@ -160,7 +160,7 @@ max(unlist(performance(prediction(y_pred, y), "acc")@y.values))
 
 ## Conclusion
 
-Due to class imbalance, always prediction customer attrition results in a baseline accuracy of 84.5%. Using logistic regression, we can improve accuracy by about 6%. Most of the predictive power seems to come from credit card utilization variables rather than demographic variables. 
+Due to class imbalance, always predicting customer attrition results in a baseline accuracy of 84.5%. Using logistic regression, we can improve accuracy by about 6%. Most of the predictive power seems to come from credit card utilization variables rather than demographic variables. 
 
 While more sophisticated models could probably perform better, this is a good starting point. I'll probably come back to other models later. Logistic regression has the advantage of (somewhat) interpretable coefficients.
 
