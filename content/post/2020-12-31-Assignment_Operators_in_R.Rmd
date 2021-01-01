@@ -1,0 +1,16 @@
+---
+title: "Assignment Operators in R"
+description: "Settling the Debate Once and For All"
+date: 2020-12-31
+categories: ["R", "Torch"]
+tags: ["R Markdown", "R", "Torch", "Linear Models"]
+twitterImg: images/assign.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+
+![Meme](image/pic1.png)
