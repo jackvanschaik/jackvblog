@@ -13,4 +13,4 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 
 
-![Meme](image/assign.png)
+![Meme](/images/assign.png)
