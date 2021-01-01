@@ -1,0 +1,189 @@
+---
+title: "Computing Batches of Linear Models with R Torch"
+description: "Using R Torch's tensors to computer batches of beta coefficients"
+date: 2020-12-31
+categories: ["R", "Torch"]
+tags: ["R Markdown", "R", "Torch", "Linear Models"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Earlier this year, the <a href="https://blog.rstudio.com/2020/09/29/torch/">Torch deep learning framework</a> was made available for R. It works natively in R which is super exciting!</p>
+<p>Underlying R Torch is tensors and the functions that operate on them. Tensors operations can be done by cpu, or an Nvidia GPU via CUDA. Upon entering <a href="https://blog.rstudio.com/2020/09/29/torch/">the R inferno</a>, you’ll realize that matrices and matrix operations can be necessary for optimizing computation in R. Thus, the batch matrix operations enabled by R torch could be useful for anyone with a need for speed (especially if they have an Nvidia GPU).</p>
+<p>I decided to test this out using on a familiar problem: linear models. The beta coefficients for a multiple linear regression are given by:</p>
+<p><span class="math inline">\((X^tX)^{-1}X^tY\)</span></p>
+<p>Where <span class="math inline">\(X\)</span> is the design matrix and <span class="math inline">\(Y\)</span> is the dependent variable. In multiple linear regression with <span class="math inline">\(p\)</span> predictors, there’s <span class="math inline">\(2^p\)</span> possible models that can be created. For large <span class="math inline">\(p\)</span>, it’s computationally impractical to calculate every model, as the computational complexity is exponential with respect to <span class="math inline">\(p\)</span>. For small enough <span class="math inline">\(p\)</span> however, it can sometime be desirable to calculate every possible model by brute force. This amounts to calculating <span class="math inline">\(2^p\)</span> matrix expressions in the form given above.</p>
+<p>I decided to approach this with the batch tensor operation functions in R torch. I won’t spend time on benchmarking as the point is really to explore how R torch can be used to approach problems like this. I’ll use Torch to calculate the beta coefficients of a linear model on the familiar <code>iris</code> dataset.</p>
+</div>
+<div id="set-up" class="section level2">
+<h2>Set Up</h2>
+<p>Load R torch in:</p>
+<pre class="r"><code>library(torch)</code></pre>
+<p>Set up some variables. <code>b</code> is the number of batches. We won’t bother calculating the null model (intercept only).</p>
+<pre class="r"><code>X &lt;- model.matrix(Sepal.Length ~ ., iris)
+y &lt;- iris$Sepal.Length
+
+p &lt;- ncol(X) - 1
+N &lt;- nrow(X)
+b &lt;- (2^p - 1)</code></pre>
+<p>We’ll set up all our data in arrays, which we’ll then convert to Torch tensors.</p>
+<p>Since we’re using tensors to do batch matrix calculations, <span class="math inline">\(X\)</span> and <span class="math inline">\(X^t\)</span>, should have consistent dimension. Naturally their dimension varies depending on the number of predictors, but we can perform the same calculations by making them submatrices of matrices with consistent dimension.</p>
+<p>Notice the first dimension is always the batching dimension.</p>
+<pre class="r"><code>X_batch &lt;- array(0, dim = c(b, N, p + 1))
+Xt_batch &lt;- array(0, dim = c(b, p + 1, N))
+d_batch &lt;- array(0, dim = c(b, p + 1, p + 1))
+y_batch &lt;- array(0, dim = c(b, N, N))
+
+Id &lt;- diag(p + 1)
+
+for (j in 1:b) {
+    cols &lt;- c(1, bitwShiftR(j, 0:(p-1)) %% 2)
+    diag(Id) &lt;- cols
+    sub_X &lt;- X %*% Id
+    diag(Id) &lt;- as.numeric(!diag(Id))
+    X_batch[j,,] &lt;- sub_X
+    Xt_batch[j,,] &lt;- t(sub_X)
+    d_batch[j,,] &lt;- Id
+    y_batch[j,,] &lt;- diag(y)
+}</code></pre>
+</div>
+<div id="computation" class="section level2">
+<h2>Computation</h2>
+<p>Now that we have batches of matrices stored in arrays, we can convert them to tensors and do our calculations.</p>
+<p>We could set <code>device="cuda"</code> instead to do GPU based calculations.</p>
+<p>Combined with the magrittr pipe (<code>%&gt;%</code>), the batch matrix operations are pretty easy to look at.</p>
+<pre class="r"><code>X_tensor &lt;- torch_tensor(X_batch)
+Xt_tensor &lt;- torch_tensor(Xt_batch)
+d_batch &lt;- torch_tensor(d_batch)
+y_tensor &lt;- torch_tensor(y_batch)
+
+Xt_tensor %&gt;%
+    torch_bmm(X_tensor) %&gt;%
+    torch_add(d_batch) %&gt;%
+    torch_inverse %&gt;%
+    torch_bmm(Xt_tensor) %&gt;%
+    as.array %&gt;%
+    apply(1, `%*%`, matrix(y))</code></pre>
+<pre><code>##            [,1]      [,2]      [,3]      [,4]      [,5]       [,6]       [,7]
+## [1,]  6.5262323 4.3066094 2.2491562 4.7776301 3.4573387  4.1905975  1.8560375
+## [2,] -0.2233705 0.0000000 0.5955113 0.0000000 0.3990639  0.0000000  0.6508332
+## [3,]  0.0000000 0.4089211 0.4719186 0.0000000 0.0000000  0.5417698  0.7091232
+## [4,]  0.0000000 0.0000000 0.0000000 0.8885792 0.9721288 -0.3195500 -0.5564481
+## [5,]  0.0000000 0.0000000 0.0000000 0.0000000 0.0000000  0.0000000  0.0000000
+## [6,]  0.0000000 0.0000000 0.0000000 0.0000000 0.0000000  0.0000000  0.0000000
+##           [,8]       [,9]      [,10]      [,11]       [,12]     [,13]
+## [1,] 5.7970004  6.4231453  4.3295324 2.15210169  4.78506008 3.1317636
+## [2,] 0.0000000 -0.1956067  0.0000000 0.62166821  0.00000000 0.4854282
+## [3,] 0.0000000  0.0000000  0.4184399 0.47189579  0.00000000 0.0000000
+## [4,] 0.0000000  0.0000000  0.0000000 0.00000000  0.89079351 0.9783357
+## [5,] 0.1389995  0.0546867 -0.1760848 0.05160184 -0.03025062 0.1623358
+## [6,] 0.0000000  0.0000000  0.0000000 0.00000000  0.00000000 0.0000000
+##           [,14]       [,15]    [,16]       [,17]      [,18]      [,19]
+## [1,]  4.1655258  1.87423401 5.471000  5.65710294 4.32017510  2.0387949
+## [2,]  0.0000000  0.64540786 0.000000 -0.06005384 0.00000000  0.6362904
+## [3,]  0.6185729  0.71155184 0.000000  0.00000000 0.40224593  0.5104322
+## [4,] -0.4734923 -0.56217282 0.000000  0.00000000 0.00000000  0.0000000
+## [5,] -0.2368288 -0.01182083 0.000000  0.00000000 0.00000000  0.0000000
+## [6,]  0.0000000  0.00000000 1.116999  1.10949314 0.03455797 -0.1770382
+##           [,20]      [,21]      [,22]       [,23]     [,24]     [,25]
+## [1,] 4.78652343  3.3723711  4.2126067  1.81547336 5.0060008 2.2514276
+## [2,] 0.00000000  0.4174872  0.0000000  0.65983358 0.0000000 0.8035497
+## [3,] 0.00000000  0.0000000  0.5518023  0.70764433 0.0000000 0.0000000
+## [4,] 0.87083346  1.0240111 -0.4075417 -0.52645986 0.0000000 0.0000000
+## [5,] 0.00000000  0.0000000  0.0000000  0.00000000 0.9300008 1.4587372
+## [6,] 0.03716589 -0.1005896  0.1374279 -0.05196843 1.5820008 1.9468202
+##           [,26]      [,27]       [,28]     [,29]        [,30]      [,31]
+## [1,]  3.6835545  2.3903924  4.78044784 2.5211001  3.683015914  2.1712735
+## [2,]  0.0000000  0.4322215  0.00000000 0.6982179  0.000000000  0.4958868
+## [3,]  0.9045497  0.7756020  0.00000000 0.0000000  0.905926879  0.8292149
+## [4,]  0.0000000  0.0000000  0.91688332 0.3715895 -0.005982179 -0.3151230
+## [5,] -1.6009404 -0.9557462 -0.06024330 0.9881397 -1.598301386 -0.7235039
+## [6,] -2.1175726 -1.3939891 -0.05005296 1.2375540 -2.112583268 -1.0234229</code></pre>
+<p>There we have it! Coefficients for every possible multiple linear regression model.</p>
+<p>Just to check, let’s compare against one of the actual linear models (for [,1]):</p>
+<pre class="r"><code>lm(Sepal.Length ~ Sepal.Width, data=iris)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Sepal.Length ~ Sepal.Width, data = iris)
+## 
+## Coefficients:
+## (Intercept)  Sepal.Width  
+##      6.5262      -0.2234</code></pre>
+<p>The coefficients match up!</p>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Torch is an exciting addition to R’s data science ecosystem. Not only is it a powerful deep learning framework, the underlying tensor operations and GPU integration can provide a potential speed boost to other R tasks.</p>
+<p>Thanks to everybody who worked on the R torch package!</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2020-12-31                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  bit           4.0.4   2020-08-04 [1] CRAN (R 4.0.2)
+##  bit64         4.0.2   2020-07-30 [1] CRAN (R 4.0.2)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs      0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reticulate    1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang         0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr       1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  torch       * 0.1.1   2020-10-20 [1] CRAN (R 4.0.3)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
