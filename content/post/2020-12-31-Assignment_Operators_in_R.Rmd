@@ -2,8 +2,8 @@
 title: "Assignment Operators in R"
 description: "Settling the Debate Once and For All"
 date: 2020-12-31
-categories: ["R", "Torch"]
-tags: ["R Markdown", "R", "Torch", "Linear Models"]
+categories: ["R"]
+tags: ["R", "programming"]
 twitterImg: images/assign.png
 ---
 
@@ -13,4 +13,4 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 
 
-![Meme](image/pic1.png)
+![Meme](image/assign.png)
