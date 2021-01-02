@@ -1,7 +1,7 @@
 ---
 title: "Faster Fixed String Search with Rcpp"
 description: "Speeding Up R String Searches with C++"
-date: 2020-01-02
+date: 2021-01-02
 categories: ["R"]
 tags: ["R", "programming", "Rcpp"]
 twitterImg: images/clip.png
@@ -92,10 +92,10 @@ bench::mark(
 <pre><code>## # A tibble: 4 x 6
 ##   expression                    min   median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;               &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 base_r(target, search)      1.6us    1.8us   345020.        0B     0   
-## 2 string_r(target, search)   19.3us   20.6us    47672.   38.99KB     9.54
-## 3 string_i(target, search)    4.3us    4.9us   180739.        0B    18.1 
-## 4 ffts(target, search)        1.4us    2.7us   398229.    2.49KB     0</code></pre>
+## 1 base_r(target, search)      1.5us    1.9us   306800.        0B     0   
+## 2 string_r(target, search)   19.4us   20.6us    47460.   38.99KB     9.49
+## 3 string_i(target, search)    4.4us    4.8us   189615.        0B    19.0 
+## 4 ffts(target, search)        1.3us    2.5us   414606.    2.49KB     0</code></pre>
 <p>So the <code>ffts</code> function is the fastest, with a slight edge on the base <code>grepl</code> function. <code>str_detect</code> is the slowest, as it is essentially a wrapper around the <code>stringi:::C_stri_detect_fixed</code> function, which still doesn’t perform as well as <code>ffts</code>.</p>
 <p>The advantage of the <code>stringi</code> method is that it is vectorized over a pattern. To be fair to <code>stringi</code>, let’s compare performance when checking multiple targets.</p>
 <pre class="r"><code>bench::mark(
@@ -105,8 +105,8 @@ bench::mark(
 <pre><code>## # A tibble: 2 x 6
 ##   expression                                                             min
 ##   &lt;bch:expr&gt;                                                          &lt;bch:&gt;
-## 1 string_i(&quot;123abc&quot;, letters)                                          6.5us
-## 2 unlist(lapply(letters, ffts, target = &quot;123abc&quot;), use.names = FALSE) 38.1us
+## 1 string_i(&quot;123abc&quot;, letters)                                          6.6us
+## 2 unlist(lapply(letters, ffts, target = &quot;123abc&quot;), use.names = FALSE) 38.2us
 ## # ... with 4 more variables: median &lt;bch:tm&gt;, `itr/sec` &lt;dbl&gt;,
 ## #   mem_alloc &lt;bch:byt&gt;, `gc/sec` &lt;dbl&gt;</code></pre>
 <p>So <code>stringi</code>’s C function is faster here. This is probably because <code>ffts</code> is scanning the string for each search term but <code>stringi</code> isn’t. I’ll probably implement a vectorized version of <code>ffts</code> that only does a single scan. Maybe it will be faster?</p>

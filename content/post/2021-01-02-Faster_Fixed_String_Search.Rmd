@@ -1,7 +1,7 @@
 ---
 title: "Faster Fixed String Search with Rcpp"
 description: "Speeding Up R String Searches with C++"
-date: 2020-01-02
+date: 2021-01-02
 categories: ["R"]
 tags: ["R", "programming", "Rcpp"]
 twitterImg: images/clip.png
