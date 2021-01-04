@@ -1,0 +1,436 @@
+---
+title: "Kaggle: A Low Usability Dataset"
+description: "Working with a difficult Kaggle Dataset"
+date: 2021-01-03
+categories: ["R"]
+tags: ["R", "R markdown", "Kaggle"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Roughly 70% of Statistics, Data Analysis, Data Science, etc is data cleaning. Once your data is ready for analysis, many models are a single line of code away.</p>
+<p>Working with messy data is a valuable skill. No dataset is perfectly clean. Even you’re lucky enough to be handed “clean” data, you still need to understand how the cleaning process may have impacted and biased the data, and therefore your results.</p>
+<p>In addition to user ratingsKaggle has a “usability” associated with each dataset. It seems that usability reflects the completeness of a particular dataset’s documentation. While many top rated datasets have a high usability score, (9 to 10 range), I thought it would be a useful exercise to analyze a dataset with a low usability score.</p>
+<p>I found this <a href="https://www.kaggle.com/altruistdelhite04/loan-prediction-problem-dataset">Loan Prediction Problem Dataset</a> posted by Debdatta Chatterjee. It has a decent rating and a seemingly good number of upvotes, but a very low usability score of 1.8.</p>
+<p>I hope to showcase some technical data preparation techniques, as well as explain the intuition and though process for why certain cleaning steps are taken.</p>
+</div>
+<div id="importing-the-data" class="section level2">
+<h2>Importing the Data</h2>
+<p>The files are csv, so I’ll use <code>readr::read_csv</code>. There’s a train and a test dataset with seemingly meaningless file names.</p>
+<pre class="r"><code>library(readr)
+
+lp_test &lt;- read_csv(&quot;C:/Users/Jack/Documents/data/kaggle/loan_prediction/test_Y3wMUE5_7gLdaTN.csv&quot;)
+lp_train &lt;- read_csv(&quot;C:/Users/Jack/Documents/data/kaggle/loan_prediction/train_u6lujuX_CVtuZ9i.csv&quot;)</code></pre>
+<p>The data loaded without any problems. A personal preference is to transform column names to lower snake case with janitor:</p>
+<pre class="r"><code>library(janitor)
+
+lp_test &lt;- clean_names(lp_test)
+lp_train &lt;- clean_names(lp_train)</code></pre>
+<p>I noticed a difference in the number of columns in the Environment window (I’m using Rstudio).</p>
+<pre class="r"><code>setdiff(names(lp_train), names(lp_test))</code></pre>
+<pre><code>## [1] &quot;loan_status&quot;</code></pre>
+<p>Well it looks like the “test” dataset is missing the <code>loan_status</code> column. The name of the dataset is “Loan Prediction”, and we have no other documentation, so my best guess is that this is our outcome of interest. Meaning our test dataset doesn’t have our outcome variable. Does that mean it’s useless? No, but I wouldn’t quite call it test data…</p>
+</div>
+<div id="exploring-the-columns" class="section level2">
+<h2>Exploring the Columns</h2>
+<p>Let’s get an overview of each column</p>
+<pre class="r"><code>library(dplyr)
+
+data_check &lt;- function(X) {
+    tibble(
+        col_name=names(X),
+        class=t(summarise(X, across(everything(), class))),
+        missing=t(summarise(X, across(everything(),  ~ sum(is.na(.x)) )))
+    )
+}
+
+knitr::kable(data_check(lp_train))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">col_name</th>
+<th align="left">class</th>
+<th align="right">missing</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">loan_id</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">gender</td>
+<td align="left">character</td>
+<td align="right">13</td>
+</tr>
+<tr class="odd">
+<td align="left">married</td>
+<td align="left">character</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="left">dependents</td>
+<td align="left">character</td>
+<td align="right">15</td>
+</tr>
+<tr class="odd">
+<td align="left">education</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">self_employed</td>
+<td align="left">character</td>
+<td align="right">32</td>
+</tr>
+<tr class="odd">
+<td align="left">applicant_income</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">coapplicant_income</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">loan_amount</td>
+<td align="left">numeric</td>
+<td align="right">22</td>
+</tr>
+<tr class="even">
+<td align="left">loan_amount_term</td>
+<td align="left">numeric</td>
+<td align="right">14</td>
+</tr>
+<tr class="odd">
+<td align="left">credit_history</td>
+<td align="left">numeric</td>
+<td align="right">50</td>
+</tr>
+<tr class="even">
+<td align="left">property_area</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">loan_status</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p>So there are a few variables with missing values.</p>
+</div>
+<div id="adjusting-columns" class="section level2">
+<h2>Adjusting Columns</h2>
+<p>If we look closely at the values of <code>loan_amount_term</code>:</p>
+<pre class="r"><code>count(lp_train, loan_amount_term)</code></pre>
+<pre><code>## # A tibble: 11 x 2
+##    loan_amount_term     n
+##               &lt;dbl&gt; &lt;int&gt;
+##  1               12     1
+##  2               36     2
+##  3               60     2
+##  4               84     4
+##  5              120     3
+##  6              180    44
+##  7              240     4
+##  8              300    13
+##  9              360   512
+## 10              480    15
+## 11               NA    14</code></pre>
+<p>These seem to be numbers of days, and take on only a few values. Due to limited documentation, there’s no way to know for certain if we should treat this as numeric or not. My intuition is that the unit here is months (360 = 30 year mortage), and the loan applicants probably get a fixed set of term amounts to choose from. Another thing to consider is if order matters. If the “&gt;” or “&lt;” symbols are meaningless for a variable, it probably shouldn’t be treated as numeric. For <code>loan_term_amount</code>, you could make a case either way.</p>
+<p>Based on how I plan to approach missing values for this variables, I’m going to treat it as categorical. I think there are only a few fixed values, so this is justifiable.</p>
+<pre class="r"><code>lp_train &lt;- mutate(lp_train, loan_amount_term  = as.character(loan_amount_term))</code></pre>
+<p>Also, credit history is surely and categorical variable here:</p>
+<pre class="r"><code>knitr::kable(count(lp_train, credit_history))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">credit_history</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">89</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">475</td>
+</tr>
+<tr class="odd">
+<td align="right">NA</td>
+<td align="right">50</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>lp_train &lt;- mutate(lp_train, credit_history  = as.character(credit_history))</code></pre>
+</div>
+<div id="approaching-missingness" class="section level2">
+<h2>Approaching Missingness</h2>
+<p>The naive thing to do would be to throw out any rows with NAs:</p>
+<pre class="r"><code>sum(apply(is.na(lp_train), 1, any))</code></pre>
+<pre><code>## [1] 134</code></pre>
+<pre class="r"><code>sum(apply(is.na(lp_train), 1, any))/nrow(lp_train)</code></pre>
+<pre><code>## [1] 0.218241</code></pre>
+<p>But that would amount to throwing out 134 rows. Which is 22% of an already small training set (n=614).</p>
+<p>The key here is that we have next to no documentation, so we can’t make any assumptions about why the data is missing, or what missing data means. The fact that the data is missing itself may be important for our prediction. We can account for this by adding a “Missing” level to categorical variables. For numerical data, it’s good practice to add a missingness indicator.</p>
+<pre class="r"><code>library(tidyr)
+
+data_transform_1 &lt;- function(data_1) {
+    data_1 %&gt;%
+        mutate(across(where(is.character), replace_na, &quot;Missing&quot;)) -&gt;
+        data_2
+    
+    data_2 %&gt;%
+        select(where(is.numeric)) %&gt;%
+        mutate(across(everything(), ~ if_else(is.na(.x), 1, 0))) %&gt;%
+        `names&lt;-`(., paste0(names(.), &quot;_missing&quot;)) %&gt;%
+        cbind(data_2, .) -&gt;
+        data_3
+    
+    data_3
+}
+
+
+lp_train_2 &lt;- data_transform_1(lp_train)
+lp_test_2 &lt;- data_transform_1(lp_test)</code></pre>
+<p>That still leaves us with missing numeric values. Again, due to limited documentation, we have to make a few educated guesses here. Predicting loan rejection seems more likely to be a business use case than an academic one. We can assume that predictive power is more important than inference here.</p>
+</div>
+<div id="imputation-with-random-forests" class="section level2">
+<h2>Imputation with Random Forests</h2>
+<p>Why not use Random Forests to impute our missing numeric values? We can use the marginal distribution of nonmissing variables to predict the missing values, while making use of the (seemingly useless) test dataset to see how well our imputation performs.</p>
+<p>We’ll set up a function to do this one variable at a time.</p>
+<pre class="r"><code>library(randomForest)
+library(rlang)
+
+impute_rf &lt;- function(target_data, formula, test_data) {
+    # Subset the training data to what needs imputed
+    lhs &lt;- f_lhs(formula)
+    rhs &lt;- f_rhs(formula)
+    
+    needs_impute &lt;- is.na(target_data[[lhs]])
+    target_train &lt;- target_data[!needs_impute,]
+    target_imp &lt;- target_data[needs_impute,]
+
+    # Train the random forest with nonmissing values
+    Rf &lt;- randomForest(formula, data=target_train, ntree = 200)
+    
+    # Calculate R2 against complete cases in the test data
+    test_complete &lt;- drop_na(test_data)
+    y_pred &lt;- predict(Rf, test_complete)
+    y &lt;- test_complete[[lhs]]
+    tss &lt;- sum((y - mean(y))^2)
+    rss &lt;- sum((y - y_pred)^2)
+    r2 &lt;- 1 - rss/tss
+    cat(&quot;Test R2 for Imputation:&quot;, r2, fill=TRUE)
+    
+    # Impute the missing values and return
+    target_data[needs_impute, as.character(lhs)] &lt;- predict(Rf, target_imp)
+    target_data
+}</code></pre>
+<p>We can now impute our missing values:</p>
+<pre class="r"><code>set.seed(1234)
+
+lp_train_2 %&gt;%
+    impute_rf(
+        loan_amount ~ married + dependents + education + self_employed +
+            applicant_income + coapplicant_income + property_area + loan_amount_term,
+        lp_test_2
+    ) -&gt;
+    lp_test_3</code></pre>
+<pre><code>## Test R2 for Imputation: 0.2956553</code></pre>
+<pre class="r"><code>knitr::kable(data_check(lp_test_3))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">col_name</th>
+<th align="left">class</th>
+<th align="right">missing</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">loan_id</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">gender</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">married</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">dependents</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">education</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">self_employed</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">applicant_income</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">coapplicant_income</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">loan_amount</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">loan_amount_term</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">credit_history</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">property_area</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">loan_status</td>
+<td align="left">character</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">applicant_income_missing</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">coapplicant_income_missing</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">loan_amount_missing</td>
+<td align="left">numeric</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>There you have it. The data is now analysis ready. We started with no documentation, used a combination of educated guesses and best practices, and finally created a complete, analysis ready dataset.</p>
+<p>It’s very important that data preparation is documented and explained in a clear and cohesive manner. Data prep should be reproducible in both academia and research. Relevant details about imputation (such as the <span class="math inline">\(R^2\)</span> value above), should be shared in a methods section or presented to relevant stakeholders. R markdown is a great way to implement a reproducible, well documented, data cleaning process.</p>
+<p>While a “Usability” score can help Kaggle users find working practice datasets, real world data doesn’t come with a usability score. Often, a lot of work goes into preparing data for analysis. Understanding data preparation and cleaning is for necessary for interpreting results. If you are new to data analysis and are using Kaggle for practice that’s great! I’d encourage you to try out some low “usability” datasets to practice your data wrangling skills.</p>
+</div>
+<div id="data-ethics-postscript" class="section level2">
+<h2>Data Ethics Postscript</h2>
+<p>Algorithmic prediction of loan approval has been problematic. I recommend Cathy O’Neil’s <a href="https://www.amazon.com/Weapons-Math-Destruction-Increases-Inequality/dp/0553418815">Weapons of Math Destruction</a>– Chapter 8 is particularly relevant here.</p>
+<p>Part of working with data, especially messy data, is realizing that it exists as part of a much larger system. It is never raw, usually biased, and mostly likely will lead to biased results. Datasets such as this one, that are completely devoid of documentation, should be handled with extreme caution.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2021-01-04                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package      * version date       lib source        
+##  assertthat     0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports      1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blogdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  callr          3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cli            2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  crayon         1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  desc           1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools     * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest         0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr        * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  ellipsis       0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate       0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi          0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  fs             1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics       0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  glue           1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  highr          0.8     2019-03-20 [1] CRAN (R 4.0.2)
+##  hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  janitor      * 2.0.1   2020-04-12 [1] CRAN (R 4.0.2)
+##  jsonlite       1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr          1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  lattice        0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle      0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate      1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr       1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix         1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise        1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  pillar         1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild       1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload        1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits    1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx       3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps             1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr          0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6             2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  randomForest * 4.6-14  2018-03-25 [1] CRAN (R 4.0.2)
+##  rappdirs       0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp           1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr        * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  remotes        2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reticulate     1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang        * 0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown      2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot      1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi     0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  sessioninfo    1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  snakecase      0.11.0  2019-05-25 [1] CRAN (R 4.0.2)
+##  stringi        1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr        1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat       2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble         3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr        * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect     1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  usethis      * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  utf8           1.1.4   2018-05-24 [1] CRAN (R 4.0.2)
+##  vctrs          0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr          2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun           0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  yaml           2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
