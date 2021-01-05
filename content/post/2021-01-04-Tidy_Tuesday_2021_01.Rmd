@@ -26,16 +26,18 @@ transit_cost <- tidytuesdayR::tt_load(2021, week = 2)$transit_cost
 
 I'm going to remove some columns I'm not interested in:
 
-* `tunnel_per`: It's nice to have the formatted percentage, but I can I'll create again if needed
+* `tunnel_per`: It's nice to have the formatted percentage, but I can create again if needed
 * `source1`, `source2`, `reference`: While this could be useful for a detailed analysis, I don't think it'll be interesting my quick visualization
 * `currency` and `cost`: Redundant, since we have cost normalized to USD in `real_cost`
 
-We'll also remove rows with an NA `e` value here because those seem totally empty
-
-We also want to treat years as numeric.
+We'll also remove rows with an NA `e` value here because those seem totally empty. We also want to treat years as numeric. Finally, we should map the country abbreviations to the full country name.
 
 ```{r}
 library(tidyverse)
+library(scales)
+library(ggthemes)
+
+cc <- transmute(countrycode::codelist, country=iso2c, country_name=country.name.en)
 
 transit_cost %>%
     select(-tunnel_per, -source1, -source2, -reference, -currency, -cost) %>%
@@ -43,56 +45,54 @@ transit_cost %>%
     mutate(
         start_year = as.numeric(start_year),
         end_year = as.numeric(end_year)
-    ) ->
+    ) %>%
+    left_join(cc, by="country") ->
     transit_cost_2
 ```
 
-Now we should handle NAs.
+I'll end up ignoring values without start and end years.
+
+## Data Subsetting
+
+This is more of a personal preference, but I like to do an additional transformation/subsetting step for each plot I make. This way the cleaned data from the above step remains consistent. I try to avoid having formatted value for plotting in any tables meant for analysis.
 
 ```{r}
-transit_cost_2
+transit_cost_2 %>%
+    group_by(country_name) %>%
+    mutate(n = length(country_name)) %>%
+    transmute(
+        city,
+        is_us = if_else(country_name == "United States", country_name, "Other", missing = "Other"),
+        cost_km_millions,
+        elapsed_years = end_year - start_year
+    )  ->
+    viz_1
 ```
 
 ## Visualization
 
 ```{r}
-transit_cost_2 %>%
-    arrange(country, start_year) %>%
-    mutate(id=seq(e)) %>%
-    ggplot(aes(x = start_year, xend = end_year, y=id, yend=id, color=country)) +
-    geom_segment()
-
-?geom_segment
+ggplot(viz_1, aes(x=elapsed_years, y=cost_km_millions, label=city, color=is_us)) + 
+    geom_point(data=filter(viz_1, is_us == "United States"), size = 2) + 
+    geom_text(
+        data=filter(viz_1, is_us == "United States"), 
+        nudge_x = 0.2, hjust=0, 
+        check_overlap = TRUE) + 
+    geom_jitter(data=filter(viz_1, is_us == "Other"), alpha=0.33) + 
+    xlim(0, 18) +
+    scale_y_log10() +
+    labs(x = "Elapsed Build Time (Years)", y = "Log cost / km (USD)", 
+         title = "Transit Project Cost vs Build Time", 
+         subtitle = "Tidy Tuesday for January 5th, 2021",
+         caption = "Source: https://transitcosts.com/") +
+    theme_solarized() +
+    scale_colour_solarized('blue') +
+    theme(legend.position = "none")
 ```
 
-```{r}
-transit_cost_2 %>%
-    group_by(country) %>%
-    mutate(n = length(country)) %>%
-    transmute(
-        country = if_else(n > 10, country, "Other"),
-        cost_km_millions,
-        elapsed_years = start_year
-    ) %>%
-    ggplot(aes(x=elapsed_years, y=log(cost_km_millions), color=country)) +
-        geom_jitter()
-```
+## Session Info
 
 ```{r}
-transit_cost_2 %>%
-    group_by(country) %>%
-    mutate(n = length(country)) %>%
-    transmute(
-        country = if_else(n > 10, country, "Other"),
-        cost_km_millions,
-        start_year, end_year,
-        elapsed_years = end_year - start_year,
-        station_density = stations / length
-    )  %>%
-    ggplot(aes(x=station_density, y=elapsed_years, color=country)) + geom_point()
-```
-
-```{r}
-transit_cost_2
+session_info()
 ```
 

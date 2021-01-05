@@ -23,13 +23,16 @@ twitterImg: images/clip.png
 <h2>Data Cleaning</h2>
 <p>I’m going to remove some columns I’m not interested in:</p>
 <ul>
-<li><code>tunnel_per</code>: It’s nice to have the formatted percentage, but I can I’ll create again if needed</li>
+<li><code>tunnel_per</code>: It’s nice to have the formatted percentage, but I can create again if needed</li>
 <li><code>source1</code>, <code>source2</code>, <code>reference</code>: While this could be useful for a detailed analysis, I don’t think it’ll be interesting my quick visualization</li>
 <li><code>currency</code> and <code>cost</code>: Redundant, since we have cost normalized to USD in <code>real_cost</code></li>
 </ul>
-<p>We’ll also remove rows with an NA <code>e</code> value here because those seem totally empty</p>
-<p>We also want to treat years as numeric.</p>
+<p>We’ll also remove rows with an NA <code>e</code> value here because those seem totally empty. We also want to treat years as numeric. Finally, we should map the country abbreviations to the full country name.</p>
 <pre class="r"><code>library(tidyverse)
+library(scales)
+library(ggthemes)
+
+cc &lt;- transmute(countrycode::codelist, country=iso2c, country_name=country.name.en)
 
 transit_cost %&gt;%
     select(-tunnel_per, -source1, -source2, -reference, -currency, -cost) %&gt;%
@@ -37,7 +40,8 @@ transit_cost %&gt;%
     mutate(
         start_year = as.numeric(start_year),
         end_year = as.numeric(end_year)
-    ) -&gt;
+    ) %&gt;%
+    left_join(cc, by=&quot;country&quot;) -&gt;
     transit_cost_2</code></pre>
 <pre><code>## Warning: Problem with `mutate()` input `start_year`.
 ## i NAs introduced by coercion
@@ -47,73 +51,144 @@ transit_cost %&gt;%
 ## i NAs introduced by coercion
 ## i Input `end_year` is `as.numeric(end_year)`.</code></pre>
 <pre><code>## Warning in mask$eval_all_mutate(dots[[i]]): NAs introduced by coercion</code></pre>
-<p>Now we should handle NAs.</p>
-<pre class="r"><code>transit_cost_2</code></pre>
-<pre><code>## # A tibble: 537 x 14
-##        e country city  line  start_year end_year    rr length tunnel stations
-##    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
-##  1  7136 CA      Vanc~ Broa~       2020     2025     0    5.7    5          6
-##  2  7137 CA      Toro~ Vaug~       2009     2017     0    8.6    8.6        6
-##  3  7138 CA      Toro~ Scar~       2020     2030     0    7.8    7.8        3
-##  4  7139 CA      Toro~ Onta~       2020     2030     0   15.5    8.8       15
-##  5  7144 CA      Toro~ Yong~       2020     2030     0    7.4    7.4        6
-##  6  7145 NL      Amst~ Nort~       2003     2018     0    9.7    7.1        8
-##  7  7146 CA      Mont~ Blue~       2020     2026     0    5.8    5.8        5
-##  8  7147 US      Seat~ U-Li~       2009     2016     0    5.1    5.1        2
-##  9  7152 US      Los ~ Purp~       2020     2027     0    4.2    4.2        2
-## 10  7153 US      Los ~ Purp~       2018     2026     0    4.2    4.2        2
-## # ... with 527 more rows, and 4 more variables: year &lt;dbl&gt;, ppp_rate &lt;dbl&gt;,
-## #   real_cost &lt;chr&gt;, cost_km_millions &lt;dbl&gt;</code></pre>
+<p>I’ll end up ignoring values without start and end years.</p>
+</div>
+<div id="data-subsetting" class="section level2">
+<h2>Data Subsetting</h2>
+<p>This is more of a personal preference, but I like to do an additional transformation/subsetting step for each plot I make. This way the cleaned data from the above step remains consistent. I try to avoid having formatted values for plotting in any tables meant for analysis.</p>
+<pre class="r"><code>transit_cost_2 %&gt;%
+    group_by(country_name) %&gt;%
+    mutate(n = length(country_name)) %&gt;%
+    transmute(
+        city,
+        is_us = if_else(country_name == &quot;United States&quot;, country_name, &quot;Other&quot;, missing = &quot;Other&quot;),
+        cost_km_millions,
+        elapsed_years = end_year - start_year
+    )  -&gt;
+    viz_1</code></pre>
 </div>
 <div id="visualization" class="section level2">
 <h2>Visualization</h2>
-<pre class="r"><code>transit_cost_2 %&gt;%
-    arrange(country, start_year) %&gt;%
-    mutate(id=seq(e)) %&gt;%
-    ggplot(aes(x = start_year, xend = end_year, y=id, yend=id, color=country)) +
-    geom_segment()</code></pre>
-<pre><code>## Warning: Removed 75 rows containing missing values (geom_segment).</code></pre>
+<pre class="r"><code>ggplot(viz_1, aes(x=elapsed_years, y=cost_km_millions, label=city, color=is_us)) + 
+    geom_point(data=filter(viz_1, is_us == &quot;United States&quot;), size = 2) + 
+    geom_text(
+        data=filter(viz_1, is_us == &quot;United States&quot;), 
+        nudge_x = 0.2, hjust=0, 
+        check_overlap = TRUE) + 
+    geom_jitter(data=filter(viz_1, is_us == &quot;Other&quot;), alpha=0.33) + 
+    xlim(0, 18) +
+    scale_y_log10() +
+    labs(x = &quot;Elapsed Build Time (Years)&quot;, y = &quot;Log cost / km (USD)&quot;, 
+         title = &quot;Transit Project Cost vs Build Time&quot;, 
+         subtitle = &quot;Tidy Tuesday for January 5th, 2021&quot;,
+         caption = &quot;Source: https://transitcosts.com/&quot;) +
+    theme_solarized() +
+    scale_colour_solarized(&#39;blue&#39;) +
+    theme(legend.position = &quot;none&quot;)</code></pre>
+<pre><code>## Warning: Removed 81 rows containing missing values (geom_point).</code></pre>
 <p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
-<pre class="r"><code>?geom_segment</code></pre>
-<pre class="r"><code>transit_cost_2 %&gt;%
-    group_by(country) %&gt;%
-    mutate(n = length(country)) %&gt;%
-    transmute(
-        country = if_else(n &gt; 10, country, &quot;Other&quot;),
-        cost_km_millions,
-        elapsed_years = start_year
-    ) %&gt;%
-    ggplot(aes(x=elapsed_years, y=log(cost_km_millions), color=country)) +
-        geom_jitter()</code></pre>
-<pre><code>## Warning: Removed 62 rows containing missing values (geom_point).</code></pre>
-<p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
-<pre class="r"><code>transit_cost_2 %&gt;%
-    group_by(country) %&gt;%
-    mutate(n = length(country)) %&gt;%
-    transmute(
-        country = if_else(n &gt; 10, country, &quot;Other&quot;),
-        cost_km_millions,
-        start_year, end_year,
-        elapsed_years = end_year - start_year,
-        station_density = stations / length
-    )  %&gt;%
-    ggplot(aes(x=station_density, y=elapsed_years, color=country)) + geom_point()</code></pre>
-<pre><code>## Warning: Removed 79 rows containing missing values (geom_point).</code></pre>
-<p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
-<pre class="r"><code>transit_cost_2</code></pre>
-<pre><code>## # A tibble: 537 x 14
-##        e country city  line  start_year end_year    rr length tunnel stations
-##    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
-##  1  7136 CA      Vanc~ Broa~       2020     2025     0    5.7    5          6
-##  2  7137 CA      Toro~ Vaug~       2009     2017     0    8.6    8.6        6
-##  3  7138 CA      Toro~ Scar~       2020     2030     0    7.8    7.8        3
-##  4  7139 CA      Toro~ Onta~       2020     2030     0   15.5    8.8       15
-##  5  7144 CA      Toro~ Yong~       2020     2030     0    7.4    7.4        6
-##  6  7145 NL      Amst~ Nort~       2003     2018     0    9.7    7.1        8
-##  7  7146 CA      Mont~ Blue~       2020     2026     0    5.8    5.8        5
-##  8  7147 US      Seat~ U-Li~       2009     2016     0    5.1    5.1        2
-##  9  7152 US      Los ~ Purp~       2020     2027     0    4.2    4.2        2
-## 10  7153 US      Los ~ Purp~       2018     2026     0    4.2    4.2        2
-## # ... with 527 more rows, and 4 more variables: year &lt;dbl&gt;, ppp_rate &lt;dbl&gt;,
-## #   real_cost &lt;chr&gt;, cost_km_millions &lt;dbl&gt;</code></pre>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2021-01-05                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package      * version date       lib source        
+##  assertthat     0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports      1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blob           1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##  blogdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  broom          0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##  callr          3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cellranger     1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##  cli            2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  colorspace     1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##  countrycode    1.2.0   2020-05-22 [1] CRAN (R 4.0.3)
+##  crayon         1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  curl           4.3     2019-12-02 [1] CRAN (R 4.0.2)
+##  DBI            1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##  dbplyr         1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##  desc           1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools     * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest         0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr        * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  ellipsis       0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate       0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi          0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  farver         2.0.3   2020-01-16 [1] CRAN (R 4.0.2)
+##  forcats      * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##  fs             1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics       0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  ggplot2      * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##  ggthemes     * 4.2.0   2019-05-13 [1] CRAN (R 4.0.2)
+##  glue           1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  gtable         0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##  haven          2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##  hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  httr           1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##  jsonlite       1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr          1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  labeling       0.3     2014-08-23 [1] CRAN (R 4.0.0)
+##  lattice        0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lifecycle      0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate      1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr       1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix         1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise        1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  modelr         0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##  munsell        0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##  pillar         1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild       1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload        1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits    1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx       3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps             1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr        * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6             2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs       0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp           1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr        * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  readxl         1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##  remotes        2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reprex         0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##  reticulate     1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang          0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown      2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot      1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi     0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  rvest          0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##  scales       * 1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##  selectr        0.4-2   2019-11-20 [1] CRAN (R 4.0.2)
+##  sessioninfo    1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi        1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr      * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat       2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble       * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr        * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect     1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  tidytuesdayR   1.0.1   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyverse    * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##  usethis      * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs          0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  withr          2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun           0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  xml2           1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##  yaml           2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
 </div>
