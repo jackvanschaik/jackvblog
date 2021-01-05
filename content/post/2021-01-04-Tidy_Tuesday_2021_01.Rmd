@@ -1,0 +1,98 @@
+---
+title: "Tidy Tuesday 01-04-2021: Transit Cost"
+description: "Tidy Tuesday 2021, Week 1"
+date: 2021-01-04
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+I've participated in [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) a few times. I'd like to try to participate every week in 2021, starting now!
+
+## Downloading Data
+
+```{r}
+transit_cost <- tidytuesdayR::tt_load(2021, week = 2)$transit_cost
+```
+
+## Data Cleaning
+
+I'm going to remove some columns I'm not interested in:
+
+* `tunnel_per`: It's nice to have the formatted percentage, but I can I'll create again if needed
+* `source1`, `source2`, `reference`: While this could be useful for a detailed analysis, I don't think it'll be interesting my quick visualization
+* `currency` and `cost`: Redundant, since we have cost normalized to USD in `real_cost`
+
+We'll also remove rows with an NA `e` value here because those seem totally empty
+
+We also want to treat years as numeric.
+
+```{r}
+library(tidyverse)
+
+transit_cost %>%
+    select(-tunnel_per, -source1, -source2, -reference, -currency, -cost) %>%
+    filter(!is.na(e)) %>%
+    mutate(
+        start_year = as.numeric(start_year),
+        end_year = as.numeric(end_year)
+    ) ->
+    transit_cost_2
+```
+
+Now we should handle NAs.
+
+```{r}
+transit_cost_2
+```
+
+## Visualization
+
+```{r}
+transit_cost_2 %>%
+    arrange(country, start_year) %>%
+    mutate(id=seq(e)) %>%
+    ggplot(aes(x = start_year, xend = end_year, y=id, yend=id, color=country)) +
+    geom_segment()
+
+?geom_segment
+```
+
+```{r}
+transit_cost_2 %>%
+    group_by(country) %>%
+    mutate(n = length(country)) %>%
+    transmute(
+        country = if_else(n > 10, country, "Other"),
+        cost_km_millions,
+        elapsed_years = start_year
+    ) %>%
+    ggplot(aes(x=elapsed_years, y=log(cost_km_millions), color=country)) +
+        geom_jitter()
+```
+
+```{r}
+transit_cost_2 %>%
+    group_by(country) %>%
+    mutate(n = length(country)) %>%
+    transmute(
+        country = if_else(n > 10, country, "Other"),
+        cost_km_millions,
+        start_year, end_year,
+        elapsed_years = end_year - start_year,
+        station_density = stations / length
+    )  %>%
+    ggplot(aes(x=station_density, y=elapsed_years, color=country)) + geom_point()
+```
+
+```{r}
+transit_cost_2
+```
+

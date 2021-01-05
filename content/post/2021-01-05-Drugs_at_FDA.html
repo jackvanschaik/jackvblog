@@ -1,0 +1,290 @@
+---
+title: "Dataset: Opioid Drugs at FDA"
+description: "Transformed and tidied drugs at FDA dataset"
+date: 2021-01-05
+categories: ["R"]
+tags: ["R", "R markdown", "Dataset"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The FDA maintains a publicly accessible database of all approved drugs called <a href="https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm">Drugs @ FDA</a>. I was interested in using it for an older project, so I had to tidy it up.</p>
+<p>The database links to documented correspondence between the FDA and drugs manufacturers throughout the approval process. I was interested in analyzing the text relating to approved opioids that were later withdrawn. This didn’t end up panning out, but the dataset could still be useful.</p>
+<p>Either way, this is an example of how to make sense of a relational dataset and download bulk pdf data into R.</p>
+</div>
+<div id="load-fda-drug-database-into-r" class="section level2">
+<h2>Load FDA Drug Database Into R</h2>
+<p>Data comes from <a href="https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files">FDA Website</a></p>
+<p>First, download the data from FDA wesbite, extract, and read into R:</p>
+<pre class="r"><code>library(tidyverse)
+library(janitor)
+library(tools)
+library(pdftools)
+library(quanteda)
+
+setwd(&quot;C:/Users/Jack/Documents/data/drugs_at_fda&quot;)
+
+actiontypes_lkp &lt;- read_tsv(&quot;ActionTypes_Lookup.txt&quot;)
+appdocs &lt;- read_tsv(&quot;ApplicationDocs.txt&quot;, guess_max=100000)
+apps &lt;- read_tsv(&quot;Applications.txt&quot;)
+appdocstype_lkp &lt;- read_tsv(&quot;ApplicationsDocsType_Lookup.txt&quot;)
+mkstatus &lt;- read_tsv(&quot;MarketingStatus.txt&quot;)
+mkstatus_lookup &lt;- read_tsv(&quot;MarketingStatus_Lookup.txt&quot;)
+products &lt;- read_tsv(&quot;Products.txt&quot;)
+subclass &lt;- read_tsv(&quot;SubmissionClass_Lookup.txt&quot;)
+subproptype &lt;- read_tsv(&quot;SubmissionPropertyType.txt&quot;, guess_max=100000)
+sub &lt;- read_tsv(&quot;Submissions.txt&quot;, guess_max=100000)
+te &lt;- read_tsv(&quot;TE.txt&quot;)</code></pre>
+<p>Going forward, using the ERD (Entity Relationship Diagram) from the FDA’s site will be helpful.</p>
+</div>
+<div id="define-opioids" class="section level2">
+<h2>Define Opioids</h2>
+<p>We’ll define opioids via <a href="https://www.drugbank.ca/categories/DBCAT000480">Drug Bank</a>.</p>
+<p>We’ll use these opioid generic names to subset the FDA products, using the <code>ActiveIngredient</code> field to apply the filter.</p>
+<pre class="r"><code>op_names &lt;- tolower(c(&quot;Alfentanil&quot;, &quot;Alphacetylmethadol&quot;, &quot;Alphaprodine&quot;, &quot;Benzhydrocodone&quot;,
+              &quot;Bezitramide&quot;, &quot;Buprenorphine&quot;, &quot;Butorphanol&quot;, &quot;Carfentanil&quot;, &quot;Codeine&quot;,
+              &quot;Desomorphine&quot;, &quot;Dextromoramide&quot;, &quot;Dextropropoxyphene&quot;, &quot;Dezocine&quot;, &quot;Diamorphine&quot;,
+              &quot;Dihydrocodeine&quot;, &quot;Dihydroetorphine&quot;, &quot;Dihydromorphine&quot;, &quot;Diphenoxylate&quot;, &quot;DPDPE&quot;,
+              &quot;Eluxadoline&quot;, &quot;Ethylmorphine&quot;, &quot;Etorphine&quot;, &quot;Fentanyl&quot;, &quot;Hydrocodone&quot;, &quot;Hydromorphone&quot;,
+              &quot;Ketobemidone&quot;, &quot;Levacetylmethadol&quot;, &quot;Levorphanol&quot;, &quot;Lofentanil&quot;, &quot;Meperidine&quot;,
+              &quot;Meptazinol&quot;, &quot;Methadone&quot;, &quot;Methadyl acetate&quot;, &quot;Morphine&quot;, &quot;Nalbuphine&quot;, &quot;Naltrexone&quot;,
+              &quot;Nicomorphine&quot;, &quot;Normethadone&quot;, &quot;Opium&quot;, &quot;Oxycodone&quot;, &quot;Oxymorphone&quot;, &quot;Pentazocine&quot;,
+              &quot;Phenazocine&quot;, &quot;Phenoperidine&quot;, &quot;Piritramide&quot;, &quot;Remifentanil&quot;, &quot;Sufentanil&quot;,
+              &quot;Tapentadol&quot;, &quot;Tilidine&quot;, &quot;Tramadol&quot;))
+
+op_reg &lt;- paste0(&quot;(?i)&quot;, paste0(op_names, collapse=&quot;|&quot;))
+
+products %&gt;%
+    filter(str_detect(ActiveIngredient, op_reg)) -&gt;
+    products_op</code></pre>
+</div>
+<div id="tidy-the-fda-data" class="section level2">
+<h2>Tidy The FDA Data</h2>
+<p>The FDA database has 24226 total applications and 1014 Opioid applications. This consists of 41717 total products and 1823 Opioid products.</p>
+<p>Here’s the tidying process</p>
+<ol style="list-style-type: decimal">
+<li>Map marketing status codes to descriptions</li>
+<li>Map products to marking status</li>
+<li>Nest product info by application id</li>
+<li>Map appdocs to their type and nest by application id</li>
+</ol>
+<pre class="r"><code>mkstatus %&gt;%
+    left_join(mkstatus_lookup, by = &quot;MarketingStatusID&quot;) %&gt;%
+    select(ApplNo, ProductNo, MarketingStatusDescription) -&gt;
+    mkstatus_2
+
+products_op %&gt;%
+    left_join(mkstatus_2, by = c(&quot;ApplNo&quot;, &quot;ProductNo&quot;)) %&gt;%
+    nest(products=c(ProductNo, Form, Strength, ReferenceDrug, 
+                DrugName, ActiveIngredient, ReferenceStandard, 
+                MarketingStatusDescription)) %&gt;%
+    arrange(ApplNo) -&gt;
+    fda_op
+
+fda_op %&gt;%
+    select(ApplNo) %&gt;%
+    inner_join(appdocs, by=&quot;ApplNo&quot;) -&gt;
+    appdocs_op
+
+appdocs_op %&gt;%
+    left_join(
+        appdocstype_lkp %&gt;%
+            rename(ApplicationDocsTypeID=ApplicationDocsType_Lookup_ID),
+        by=&quot;ApplicationDocsTypeID&quot;) %&gt;%
+    left_join(sub, by=c(&quot;ApplNo&quot;, &quot;SubmissionNo&quot;, &quot;SubmissionType&quot;)) %&gt;%
+    nest(appdocs=c(-ApplNo)) -&gt;
+    appdocs_2
+
+fda_op %&gt;%
+    left_join(appdocs_2, by=&quot;ApplNo&quot;) %&gt;%
+    mutate(
+        any_appdocs = !unlist(map(appdocs, is.null)),
+        any_discontinued = unlist(map(products, ~ any(.x$MarketingStatusDescription == &quot;Discontinued&quot;))),
+        any_not_approved = unlist(map(products, ~ any(.x$MarketingStatusDescription == &quot;None (Tentative Approval)&quot;)))
+    ) -&gt;
+    fda_op_2</code></pre>
+<p>At this point, we have a single table with all of our opioids: <code>fda_op_2</code>. Different products and application documents have been nested, so we have one row per application. We have a few flags of interest <code>any_appdocs</code>, <code>any_discontinued</code>, and <code>any_not_approved</code>.</p>
+<pre class="r"><code>head(fda_op_2)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+##   ApplNo products     appdocs      any_appdocs any_discontinued any_not_approved
+##   &lt;chr&gt;  &lt;list&gt;       &lt;list&gt;       &lt;lgl&gt;       &lt;lgl&gt;            &lt;lgl&gt;           
+## 1 005010 &lt;tibble [7 ~ &lt;tibble [20~ TRUE        TRUE             FALSE           
+## 2 005213 &lt;tibble [2 ~ &lt;tibble [8 ~ TRUE        TRUE             FALSE           
+## 3 006134 &lt;tibble [3 ~ &lt;tibble [31~ TRUE        TRUE             FALSE           
+## 4 006383 &lt;tibble [3 ~ &lt;tibble [4 ~ TRUE        TRUE             FALSE           
+## 5 007337 &lt;tibble [3 ~ &lt;tibble [21~ TRUE        TRUE             FALSE           
+## 6 008306 &lt;tibble [2 ~ &lt;tibble [12~ TRUE        TRUE             FALSE</code></pre>
+</div>
+<div id="isolating-documents-for-discontinued-opioids" class="section level2">
+<h2>Isolating Documents for Discontinued Opioids</h2>
+<p>For my purposes I wanted to go ahead and download all the application documents for discontinued opioids.</p>
+<pre class="r"><code>fda_op_2 %&gt;%
+    filter(any_appdocs &amp; !any_not_approved) %&gt;%
+    select(ApplNo, appdocs, any_discontinued) %&gt;%
+    mutate(
+        appdocs = map(appdocs, ~select(.x, 
+                                       app_doc_type=ApplicationDocsType_Lookup_Description,
+                                       app_doc_url=ApplicationDocsURL,
+                                       app_doc_date=ApplicationDocsDate,
+                                       sub_status_date=SubmissionStatusDate,
+                                       review_priority=ReviewPriority))
+    ) %&gt;%
+    unnest(appdocs) %&gt;%
+    mutate(
+        app_doc_date = as.Date(app_doc_date),
+        sub_status_date = as.Date(sub_status_date)
+    ) %&gt;%
+    filter(app_doc_type == &quot;Letter&quot;) %&gt;%
+    group_by(ApplNo, app_doc_url) %&gt;%
+    # I wanted documents from discontinued Opioids, even before discontinuationA
+    summarise(any_discontinued = any(any_discontinued)) %&gt;% 
+    ungroup -&gt;
+    fda_letters</code></pre>
+</div>
+<div id="download-and-import-pdfs" class="section level2">
+<h2>Download and import PDFs</h2>
+<p>Now to download and read the text documents. The letters happened to all be pdf so I used the <code>pdftools</code> package. I downloaded all the files to folder called <code>pdf_files</code> in my working directory.</p>
+<p>This could be improved by using the <code>pdf_files</code> folder as a cache and not downloading files that are already saved.</p>
+<pre class="r"><code>fda_letters %&gt;%
+    mutate(pdf_name = paste0(&quot;pdf_files/&quot;, basename(app_doc_url))) %&gt;%
+    mutate(result = map2(app_doc_url, pdf_name, safely(function(x, y) {
+        if(!file.exists(y)) {
+            download.file(x, y)
+        }
+        pdf_text(y)
+    }))) %&gt;%
+    mutate(n_pages = unlist(map(result, ~ length(.x$result)))) %&gt;%
+    filter(n_pages &gt;= 1) -&gt; # need at least one page
+    fda_letters_2</code></pre>
+</div>
+<div id="remove-electronic-signatures" class="section level2">
+<h2>Remove Electronic Signatures</h2>
+<p>Every letter I looked at contained this redundant electronic signature section that I went ahead and removed.</p>
+<pre class="r"><code>sig_regex &lt;- &quot;(?i)this[\\s]+page[\\s]+is[\\s]+the[\\s]+manifestation[\\s]+of[\\s]+the electronic[\\s]+signature&quot;
+fda_letters_2$result &lt;- lapply(fda_letters_2$result, function(x) x$result)
+
+fda_letters_2 %&gt;%
+    mutate(
+        result_2 = map(result, function(x) {
+            sigs &lt;- str_detect(x, sig_regex)
+            paste0(x[!sigs], collapse = &quot;\n&quot;)
+        })
+    ) %&gt;%
+    select(ApplNo, app_doc_url, any_discontinued, text=result_2) -&gt;
+    fda_letters_3</code></pre>
+<p>There you have it! RDS files are a good way to save nested or complex data frames:</p>
+<pre class="r"><code>saveRDS(fda_letters_3, file=&quot;rds_files/fda_letters_3.RDS&quot;)</code></pre>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2021-01-05                  
+## 
+## - Packages -------------------------------------------------------------------
+##  ! package      * version date       lib source        
+##    askpass        1.1     2019-01-13 [1] CRAN (R 4.0.2)
+##    assertthat     0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##    backports      1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##    blob           1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##    blogdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##    bookdown       0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##    broom          0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##    callr          3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##    cellranger     1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##    cli            2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##    colorspace     1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##    crayon         1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##    data.table     1.13.0  2020-07-24 [1] CRAN (R 4.0.2)
+##    DBI            1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##    dbplyr         1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##    desc           1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##    devtools     * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##    digest         0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##    dplyr        * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##    ellipsis       0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##    evaluate       0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##    fansi          0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##    fastmatch      1.1-0   2017-01-28 [1] CRAN (R 4.0.0)
+##    forcats      * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##    fs             1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##    generics       0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##    ggplot2      * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##    glue           1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##    gtable         0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##    haven          2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##    hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##    htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##    httr           1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##    janitor      * 2.0.1   2020-04-12 [1] CRAN (R 4.0.2)
+##    jsonlite       1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##    knitr          1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##    lattice        0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##    lifecycle      0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##    lubridate      1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##    magrittr       1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##    Matrix         1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##    memoise        1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##    modelr         0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##    munsell        0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##    pdftools     * 2.3.1   2020-05-22 [1] CRAN (R 4.0.3)
+##    pillar         1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##    pkgbuild       1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##    pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##    pkgload        1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##    prettyunits    1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##    processx       3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##    ps             1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##    purrr        * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##    qpdf           1.1     2019-03-07 [1] CRAN (R 4.0.3)
+##    quanteda     * 2.1.1   2020-07-27 [1] CRAN (R 4.0.2)
+##    R6             2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##    rappdirs       0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##    Rcpp           1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  D RcppParallel   5.0.2   2020-06-24 [1] CRAN (R 4.0.2)
+##    readr        * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##    readxl         1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##    remotes        2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##    reprex         0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##    reticulate     1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##    rlang          0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##    rmarkdown      2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##    rprojroot      1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##    rstudioapi     0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##    rvest          0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##    scales         1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##    sessioninfo    1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##    snakecase      0.11.0  2019-05-25 [1] CRAN (R 4.0.2)
+##    stopwords      2.0     2020-04-14 [1] CRAN (R 4.0.2)
+##    stringi        1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##    stringr      * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##    testthat       2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##    tibble       * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##    tidyr        * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##    tidyselect     1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##    tidyverse    * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##    usethis      * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##    utf8           1.1.4   2018-05-24 [1] CRAN (R 4.0.2)
+##    vctrs          0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##    withr          2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##    xfun           0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##    xml2           1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##    yaml           2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library
+## 
+##  D -- DLL MD5 mismatch, broken installation.</code></pre>
+</div>

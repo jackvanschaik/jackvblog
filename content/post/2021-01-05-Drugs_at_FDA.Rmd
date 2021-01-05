@@ -1,0 +1,213 @@
+---
+title: "Dataset: Opioid Drugs at FDA"
+description: "Transformed and tidied drugs at FDA dataset"
+date: 2021-01-05
+categories: ["R"]
+tags: ["R", "R markdown", "Dataset"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+The FDA maintains a publicly accessible database of all approved drugs called [Drugs @ FDA](https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm). I was interested in using it for an older project, so I had to tidy it up.
+
+The database links to documented correspondence between the FDA and drugs manufacturers throughout the approval process. I was interested in analyzing the text relating to approved opioids that were later withdrawn. This didn't end up panning out, but the dataset could still be useful. 
+
+Either way, this is an example of how to make sense of a relational dataset and download bulk pdf data into R.
+
+## Load FDA Drug Database Into R
+
+Data comes from [FDA Website](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files)
+
+First, download the data from FDA wesbite, extract, and read into R:
+
+```{r warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(tools)
+library(pdftools)
+library(quanteda)
+
+setwd("C:/Users/Jack/Documents/data/drugs_at_fda")
+
+actiontypes_lkp <- read_tsv("ActionTypes_Lookup.txt")
+appdocs <- read_tsv("ApplicationDocs.txt", guess_max=100000)
+apps <- read_tsv("Applications.txt")
+appdocstype_lkp <- read_tsv("ApplicationsDocsType_Lookup.txt")
+mkstatus <- read_tsv("MarketingStatus.txt")
+mkstatus_lookup <- read_tsv("MarketingStatus_Lookup.txt")
+products <- read_tsv("Products.txt")
+subclass <- read_tsv("SubmissionClass_Lookup.txt")
+subproptype <- read_tsv("SubmissionPropertyType.txt", guess_max=100000)
+sub <- read_tsv("Submissions.txt", guess_max=100000)
+te <- read_tsv("TE.txt")
+```
+
+Going forward, using the ERD (Entity Relationship Diagram) from the FDA's site will be helpful.
+
+## Define Opioids
+
+We'll define opioids via [Drug Bank](https://www.drugbank.ca/categories/DBCAT000480).
+
+We'll use these opioid generic names to subset the FDA products, using the `ActiveIngredient` field to apply the filter.
+
+```{r}
+op_names <- tolower(c("Alfentanil", "Alphacetylmethadol", "Alphaprodine", "Benzhydrocodone",
+              "Bezitramide", "Buprenorphine", "Butorphanol", "Carfentanil", "Codeine",
+              "Desomorphine", "Dextromoramide", "Dextropropoxyphene", "Dezocine", "Diamorphine",
+              "Dihydrocodeine", "Dihydroetorphine", "Dihydromorphine", "Diphenoxylate", "DPDPE",
+              "Eluxadoline", "Ethylmorphine", "Etorphine", "Fentanyl", "Hydrocodone", "Hydromorphone",
+              "Ketobemidone", "Levacetylmethadol", "Levorphanol", "Lofentanil", "Meperidine",
+              "Meptazinol", "Methadone", "Methadyl acetate", "Morphine", "Nalbuphine", "Naltrexone",
+              "Nicomorphine", "Normethadone", "Opium", "Oxycodone", "Oxymorphone", "Pentazocine",
+              "Phenazocine", "Phenoperidine", "Piritramide", "Remifentanil", "Sufentanil",
+              "Tapentadol", "Tilidine", "Tramadol"))
+
+op_reg <- paste0("(?i)", paste0(op_names, collapse="|"))
+
+products %>%
+    filter(str_detect(ActiveIngredient, op_reg)) ->
+    products_op
+```
+
+## Tidy The FDA Data
+
+The FDA database has `r n_distinct(products$ApplNo)` total applications and `r n_distinct(products_op$ApplNo)` Opioid applications. This consists of `r nrow(products)` total products and `r nrow(products_op)` Opioid products.
+
+Here's the tidying process
+
+1. Map marketing status codes to descriptions
+2. Map products to marking status
+3. Nest product info by application id
+4. Map appdocs to their type and nest by application id
+
+```{r}
+mkstatus %>%
+    left_join(mkstatus_lookup, by = "MarketingStatusID") %>%
+    select(ApplNo, ProductNo, MarketingStatusDescription) ->
+    mkstatus_2
+
+products_op %>%
+    left_join(mkstatus_2, by = c("ApplNo", "ProductNo")) %>%
+    nest(products=c(ProductNo, Form, Strength, ReferenceDrug, 
+                DrugName, ActiveIngredient, ReferenceStandard, 
+                MarketingStatusDescription)) %>%
+    arrange(ApplNo) ->
+    fda_op
+
+fda_op %>%
+    select(ApplNo) %>%
+    inner_join(appdocs, by="ApplNo") ->
+    appdocs_op
+
+appdocs_op %>%
+    left_join(
+        appdocstype_lkp %>%
+            rename(ApplicationDocsTypeID=ApplicationDocsType_Lookup_ID),
+        by="ApplicationDocsTypeID") %>%
+    left_join(sub, by=c("ApplNo", "SubmissionNo", "SubmissionType")) %>%
+    nest(appdocs=c(-ApplNo)) ->
+    appdocs_2
+
+fda_op %>%
+    left_join(appdocs_2, by="ApplNo") %>%
+    mutate(
+        any_appdocs = !unlist(map(appdocs, is.null)),
+        any_discontinued = unlist(map(products, ~ any(.x$MarketingStatusDescription == "Discontinued"))),
+        any_not_approved = unlist(map(products, ~ any(.x$MarketingStatusDescription == "None (Tentative Approval)")))
+    ) ->
+    fda_op_2
+```
+
+At this point, we have a single table with all of our opioids: `fda_op_2`. Different products and application documents have been nested, so we have one row per application. We have a few flags of interest `any_appdocs`, `any_discontinued`, and `any_not_approved`. 
+
+```{r}
+head(fda_op_2)
+```
+
+
+## Isolating Documents for Discontinued Opioids
+
+For my purposes I wanted to go ahead and download all the application documents for discontinued opioids.
+
+```{r eval=FALSE}
+fda_op_2 %>%
+    filter(any_appdocs & !any_not_approved) %>%
+    select(ApplNo, appdocs, any_discontinued) %>%
+    mutate(
+        appdocs = map(appdocs, ~select(.x, 
+                                       app_doc_type=ApplicationDocsType_Lookup_Description,
+                                       app_doc_url=ApplicationDocsURL,
+                                       app_doc_date=ApplicationDocsDate,
+                                       sub_status_date=SubmissionStatusDate,
+                                       review_priority=ReviewPriority))
+    ) %>%
+    unnest(appdocs) %>%
+    mutate(
+        app_doc_date = as.Date(app_doc_date),
+        sub_status_date = as.Date(sub_status_date)
+    ) %>%
+    filter(app_doc_type == "Letter") %>%
+    group_by(ApplNo, app_doc_url) %>%
+    # I wanted documents from discontinued Opioids, even before discontinuationA
+    summarise(any_discontinued = any(any_discontinued)) %>% 
+    ungroup ->
+    fda_letters
+```
+
+## Download and import PDFs
+
+Now to download and read the text documents. The letters happened to all be pdf so I used the `pdftools` package. I downloaded all the files to folder called `pdf_files` in my working directory.
+
+This could be improved by using the `pdf_files` folder as a cache and not downloading files that are already saved.
+
+```{r eval=FALSE}
+fda_letters %>%
+    mutate(pdf_name = paste0("pdf_files/", basename(app_doc_url))) %>%
+    mutate(result = map2(app_doc_url, pdf_name, safely(function(x, y) {
+        if(!file.exists(y)) {
+            download.file(x, y)
+        }
+        pdf_text(y)
+    }))) %>%
+    mutate(n_pages = unlist(map(result, ~ length(.x$result)))) %>%
+    filter(n_pages >= 1) -> # need at least one page
+    fda_letters_2
+```
+
+## Remove Electronic Signatures
+
+Every letter I looked at contained this redundant electronic signature section that I went ahead and removed.
+
+```{r eval=FALSE}
+sig_regex <- "(?i)this[\\s]+page[\\s]+is[\\s]+the[\\s]+manifestation[\\s]+of[\\s]+the electronic[\\s]+signature"
+fda_letters_2$result <- lapply(fda_letters_2$result, function(x) x$result)
+
+fda_letters_2 %>%
+    mutate(
+        result_2 = map(result, function(x) {
+            sigs <- str_detect(x, sig_regex)
+            paste0(x[!sigs], collapse = "\n")
+        })
+    ) %>%
+    select(ApplNo, app_doc_url, any_discontinued, text=result_2) ->
+    fda_letters_3
+```
+
+There you have it! RDS files are a good way to save nested or complex data frames:
+
+```{r eval=FALSE}
+saveRDS(fda_letters_3, file="rds_files/fda_letters_3.RDS")
+```
+
+## Session Info
+
+```{r}
+session_info()
+```
+

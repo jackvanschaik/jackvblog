@@ -1,0 +1,119 @@
+---
+title: "Tidy Tuesday 01-04-2021: Transit Cost"
+description: "Tidy Tuesday 2021, Week 1"
+date: 2021-01-04
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I’ve participated in <a href="https://github.com/rfordatascience/tidytuesday">Tidy Tuesday</a> a few times. I’d like to try to participate every week in 2021, starting now!</p>
+</div>
+<div id="downloading-data" class="section level2">
+<h2>Downloading Data</h2>
+<pre class="r"><code>transit_cost &lt;- tidytuesdayR::tt_load(2021, week = 2)$transit_cost</code></pre>
+<pre><code>## 
+##  Downloading file 1 of 1: `transit_cost.csv`</code></pre>
+</div>
+<div id="data-cleaning" class="section level2">
+<h2>Data Cleaning</h2>
+<p>I’m going to remove some columns I’m not interested in:</p>
+<ul>
+<li><code>tunnel_per</code>: It’s nice to have the formatted percentage, but I can I’ll create again if needed</li>
+<li><code>source1</code>, <code>source2</code>, <code>reference</code>: While this could be useful for a detailed analysis, I don’t think it’ll be interesting my quick visualization</li>
+<li><code>currency</code> and <code>cost</code>: Redundant, since we have cost normalized to USD in <code>real_cost</code></li>
+</ul>
+<p>We’ll also remove rows with an NA <code>e</code> value here because those seem totally empty</p>
+<p>We also want to treat years as numeric.</p>
+<pre class="r"><code>library(tidyverse)
+
+transit_cost %&gt;%
+    select(-tunnel_per, -source1, -source2, -reference, -currency, -cost) %&gt;%
+    filter(!is.na(e)) %&gt;%
+    mutate(
+        start_year = as.numeric(start_year),
+        end_year = as.numeric(end_year)
+    ) -&gt;
+    transit_cost_2</code></pre>
+<pre><code>## Warning: Problem with `mutate()` input `start_year`.
+## i NAs introduced by coercion
+## i Input `start_year` is `as.numeric(start_year)`.</code></pre>
+<pre><code>## Warning in mask$eval_all_mutate(dots[[i]]): NAs introduced by coercion</code></pre>
+<pre><code>## Warning: Problem with `mutate()` input `end_year`.
+## i NAs introduced by coercion
+## i Input `end_year` is `as.numeric(end_year)`.</code></pre>
+<pre><code>## Warning in mask$eval_all_mutate(dots[[i]]): NAs introduced by coercion</code></pre>
+<p>Now we should handle NAs.</p>
+<pre class="r"><code>transit_cost_2</code></pre>
+<pre><code>## # A tibble: 537 x 14
+##        e country city  line  start_year end_year    rr length tunnel stations
+##    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
+##  1  7136 CA      Vanc~ Broa~       2020     2025     0    5.7    5          6
+##  2  7137 CA      Toro~ Vaug~       2009     2017     0    8.6    8.6        6
+##  3  7138 CA      Toro~ Scar~       2020     2030     0    7.8    7.8        3
+##  4  7139 CA      Toro~ Onta~       2020     2030     0   15.5    8.8       15
+##  5  7144 CA      Toro~ Yong~       2020     2030     0    7.4    7.4        6
+##  6  7145 NL      Amst~ Nort~       2003     2018     0    9.7    7.1        8
+##  7  7146 CA      Mont~ Blue~       2020     2026     0    5.8    5.8        5
+##  8  7147 US      Seat~ U-Li~       2009     2016     0    5.1    5.1        2
+##  9  7152 US      Los ~ Purp~       2020     2027     0    4.2    4.2        2
+## 10  7153 US      Los ~ Purp~       2018     2026     0    4.2    4.2        2
+## # ... with 527 more rows, and 4 more variables: year &lt;dbl&gt;, ppp_rate &lt;dbl&gt;,
+## #   real_cost &lt;chr&gt;, cost_km_millions &lt;dbl&gt;</code></pre>
+</div>
+<div id="visualization" class="section level2">
+<h2>Visualization</h2>
+<pre class="r"><code>transit_cost_2 %&gt;%
+    arrange(country, start_year) %&gt;%
+    mutate(id=seq(e)) %&gt;%
+    ggplot(aes(x = start_year, xend = end_year, y=id, yend=id, color=country)) +
+    geom_segment()</code></pre>
+<pre><code>## Warning: Removed 75 rows containing missing values (geom_segment).</code></pre>
+<p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code>?geom_segment</code></pre>
+<pre class="r"><code>transit_cost_2 %&gt;%
+    group_by(country) %&gt;%
+    mutate(n = length(country)) %&gt;%
+    transmute(
+        country = if_else(n &gt; 10, country, &quot;Other&quot;),
+        cost_km_millions,
+        elapsed_years = start_year
+    ) %&gt;%
+    ggplot(aes(x=elapsed_years, y=log(cost_km_millions), color=country)) +
+        geom_jitter()</code></pre>
+<pre><code>## Warning: Removed 62 rows containing missing values (geom_point).</code></pre>
+<p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>transit_cost_2 %&gt;%
+    group_by(country) %&gt;%
+    mutate(n = length(country)) %&gt;%
+    transmute(
+        country = if_else(n &gt; 10, country, &quot;Other&quot;),
+        cost_km_millions,
+        start_year, end_year,
+        elapsed_years = end_year - start_year,
+        station_density = stations / length
+    )  %&gt;%
+    ggplot(aes(x=station_density, y=elapsed_years, color=country)) + geom_point()</code></pre>
+<pre><code>## Warning: Removed 79 rows containing missing values (geom_point).</code></pre>
+<p><img src="/post/2021-01-04-Tidy_Tuesday_2021_01_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>transit_cost_2</code></pre>
+<pre><code>## # A tibble: 537 x 14
+##        e country city  line  start_year end_year    rr length tunnel stations
+##    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
+##  1  7136 CA      Vanc~ Broa~       2020     2025     0    5.7    5          6
+##  2  7137 CA      Toro~ Vaug~       2009     2017     0    8.6    8.6        6
+##  3  7138 CA      Toro~ Scar~       2020     2030     0    7.8    7.8        3
+##  4  7139 CA      Toro~ Onta~       2020     2030     0   15.5    8.8       15
+##  5  7144 CA      Toro~ Yong~       2020     2030     0    7.4    7.4        6
+##  6  7145 NL      Amst~ Nort~       2003     2018     0    9.7    7.1        8
+##  7  7146 CA      Mont~ Blue~       2020     2026     0    5.8    5.8        5
+##  8  7147 US      Seat~ U-Li~       2009     2016     0    5.1    5.1        2
+##  9  7152 US      Los ~ Purp~       2020     2027     0    4.2    4.2        2
+## 10  7153 US      Los ~ Purp~       2018     2026     0    4.2    4.2        2
+## # ... with 527 more rows, and 4 more variables: year &lt;dbl&gt;, ppp_rate &lt;dbl&gt;,
+## #   real_cost &lt;chr&gt;, cost_km_millions &lt;dbl&gt;</code></pre>
+</div>
