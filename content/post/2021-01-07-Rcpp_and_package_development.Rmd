@@ -4,7 +4,7 @@ description: "It wasn't that great"
 date: 2021-01-07
 categories: ["R"]
 tags: ["R", "programming"]
-twitterImg: images/hilarious_r_tools_meme.png
+twitterImg: /images/hilarious_r_tools_meme.png
 ---
 
 ```{r setup, include=FALSE}
@@ -36,4 +36,4 @@ I spent hours trying to figure out exactly where the issue was. Unfortunately, I
 
 I was stumped. As a last resort, I added `C:\rtools40\usr\bin\` to the end of my system PATH variable and viola, the package installed. But like... seriously? I've run into so many issues installing packages because R never wants to cooperate with Rtools. There's got to be a better way. 
 
-![](images/hilarious_r_tools_meme.png)
+![](/images/hilarious_r_tools_meme.png)

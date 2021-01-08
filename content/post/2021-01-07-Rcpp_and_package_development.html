@@ -4,7 +4,7 @@ description: "It wasn't that great"
 date: 2021-01-07
 categories: ["R"]
 tags: ["R", "programming"]
-twitterImg: images/hilarious_r_tools_meme.png
+twitterImg: /images/hilarious_r_tools_meme.png
 ---
 
 
@@ -22,4 +22,4 @@ ERROR: compilation failed for package &#39;textdata&#39;</code></pre>
 <p>That worked, meaning R found Rtools,but somehow can’t located make when trying to install my package.</p>
 <p>I spent hours trying to figure out exactly where the issue was. Unfortunately, I couldn’t find a productive way to debug <code>R CMD check</code> outside of its one unhelpful error message.</p>
 <p>I was stumped. As a last resort, I added <code>C:\rtools40\usr\bin\</code> to the end of my system PATH variable and viola, the package installed. But like… seriously? I’ve run into so many issues installing packages because R never wants to cooperate with Rtools. There’s got to be a better way.</p>
-<p><img src="images/hilarious_r_tools_meme.png" /></p>
+<p><img src="/images/hilarious_r_tools_meme.png" /></p>
