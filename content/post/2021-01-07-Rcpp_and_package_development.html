@@ -1,0 +1,25 @@
+---
+title: "My Experience Using Rcpp in an R Package"
+description: "It wasn't that great"
+date: 2021-01-07
+categories: ["R"]
+tags: ["R", "programming"]
+twitterImg: images/hilarious_r_tools_meme.png
+---
+
+
+
+<p>Once again, I have toiled for hours trying to get an R package to install. Not even from CRAN, this was a small local package I threw together to test Rcpp functions. I did everything by the book (as in Chapter 25 of Hadley Wickham’s advanced R). Sure enough, I was greeted by an unhelpful error message that I would be doomed to debug for the next 3 hours:</p>
+<pre eval="FALSE"><code>* installing *source* package &#39;textdata&#39; ...
+** using staged installation
+** libs
+Warning in system(cmd) : &#39;make&#39; not found
+ERROR: compilation failed for package &#39;textdata&#39;</code></pre>
+<p>This is referring to the “make” program used by Rtools. This should live in the <code>usr/bin</code> directory of your Rtools installation. For me, it’s located at <code>C:\rtools40\usr\bin\make.exe</code></p>
+<p>Since there’s a call to <code>system(cmd)</code>, I have to assume that the package build process is trying to execute a system command to run make. Which should be fine, as long as it knows where Rtools is installed. Which apparently it didn’t? The infuriating part was that when I run:</p>
+<pre class="r"><code>pkgbuild::rtools_path()</code></pre>
+<pre><code>## [1] &quot;C:\\rtools40/usr/bin&quot;</code></pre>
+<p>That worked, meaning R found Rtools,but somehow can’t located make when trying to install my package.</p>
+<p>I spent hours trying to figure out exactly where the issue was. Unfortunately, I couldn’t find a productive way to debug <code>R CMD check</code> outside of its one unhelpful error message.</p>
+<p>I was stumped. As a last resort, I added <code>C:\rtools40\usr\bin\</code> to the end of my system PATH variable and viola, the package installed. But like… seriously? I’ve run into so many issues installing packages because R never wants to cooperate with Rtools. There’s got to be a better way.</p>
+<p><img src="images/hilarious_r_tools_meme.png" /></p>

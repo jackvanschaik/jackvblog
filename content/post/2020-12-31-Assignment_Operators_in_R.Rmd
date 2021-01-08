@@ -1,10 +1,10 @@
 ---
-title: "Assignment Operators in R"
-description: "Settling the Debate Once and For All"
-date: 2020-12-31
+title: "My Experience Using Rcpp in an R Package"
+description: "It wasn't that great"
+date: 2021-01-07
 categories: ["R"]
 tags: ["R", "programming"]
-twitterImg: images/assign.png
+twitterImg: images/hilarious_r_tools_meme.png
 ---
 
 ```{r setup, include=FALSE}
@@ -13,4 +13,4 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 
 
-![](/images/assign.png)
+![](images/hilarious_r_tools_meme.png)

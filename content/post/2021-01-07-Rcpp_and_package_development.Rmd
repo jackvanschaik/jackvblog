@@ -1,0 +1,39 @@
+---
+title: "My Experience Using Rcpp in an R Package"
+description: "It wasn't that great"
+date: 2021-01-07
+categories: ["R"]
+tags: ["R", "programming"]
+twitterImg: images/hilarious_r_tools_meme.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+Once again, I have toiled for hours trying to get an R package to install. Not even from CRAN, this was a small local package I threw together to test Rcpp functions. I did everything by the book (as in Chapter 25 of Hadley Wickham's advanced R). Sure enough, I was greeted by an unhelpful error message that I would be doomed to debug for the next 3 hours:
+
+```{eval=FALSE}
+* installing *source* package 'textdata' ...
+** using staged installation
+** libs
+Warning in system(cmd) : 'make' not found
+ERROR: compilation failed for package 'textdata'
+```
+
+This is referring to the "make" program used by Rtools. This should live in the `usr/bin` directory of your Rtools installation. For me, it's located at `C:\rtools40\usr\bin\make.exe` 
+
+Since there's a call to `system(cmd)`, I have to assume that the package build process is trying to execute a system command to run make. Which should be fine, as long as it knows where Rtools is installed. Which apparently it didn't? The infuriating part was that when I run:
+
+```{r}
+pkgbuild::rtools_path()
+```
+
+That worked, meaning R found Rtools,but somehow can't located make when trying to install my package. 
+
+I spent hours trying to figure out exactly where the issue was. Unfortunately, I couldn't find a productive way to debug `R CMD check` outside of its one unhelpful error message.
+
+I was stumped. As a last resort, I added `C:\rtools40\usr\bin\` to the end of my system PATH variable and viola, the package installed. But like... seriously? I've run into so many issues installing packages because R never wants to cooperate with Rtools. There's got to be a better way. 
+
+![](images/hilarious_r_tools_meme.png)
