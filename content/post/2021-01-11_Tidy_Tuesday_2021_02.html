@@ -1,0 +1,65 @@
+---
+title: "Tidy Tuesday 01-11-2021: Art Collections"
+description: "Tidy Tuesday 2021, Week 2"
+date: 2021-01-11
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="downloading-data" class="section level2">
+<h2>Downloading Data</h2>
+<pre class="r"><code>tt &lt;- tidytuesdayR::tt_load(2021, week = 3)</code></pre>
+<pre><code>## 
+##  Downloading file 1 of 2: `artists.csv`
+##  Downloading file 2 of 2: `artwork.csv`</code></pre>
+<pre class="r"><code>artists &lt;- tt$artists
+artwork &lt;- tt$artwork
+
+library(tidyverse)
+
+artwork %&gt;%
+    select(id, medium, year, width, height) %&gt;%
+    drop_na %&gt;%
+    mutate(
+        top = height/2,
+        bottom = -top,
+        right = width/2,
+        left = -right
+    ) -&gt;
+    artwork_2</code></pre>
+<pre class="r"><code>low &lt;- min(artwork_2$left)*0.5
+high &lt;- max(artwork_2$right)*0.5
+
+ggplot(artwork_2) +
+    xlim(0, high) +
+    ylim(0, high) +
+    geom_segment(aes(x = right, xend = right, y = 0, yend = top), 
+                 artwork_2, alpha=0.05, color=&quot;#947a27&quot;) + 
+
+    geom_segment(aes(x = 0, xend = right, y = top, yend = top), 
+                 artwork_2, alpha=0.05, color=&quot;#d4af37&quot;) +
+    
+    geom_segment(aes(x = high - right, xend = high - right, y = high, yend = high - top), 
+                 artwork_2, alpha=0.05, color=&quot;#947a27&quot;) + 
+    
+    geom_segment(aes(x = high, xend = high - right, y = high - top, yend = high - top), 
+                 artwork_2, alpha=0.05, color=&quot;#d4af37&quot;) +
+    
+    theme_void() +
+    theme(
+        plot.background = element_rect(fill=&quot;black&quot;),
+        plot.caption = element_text(color=&quot;#aa8c2c&quot;)
+    ) + 
+    labs(caption = &quot;Generated Using Width and Height Data From The Tate Collection (https://github.com/tategallery/collection)&quot;)</code></pre>
+<pre><code>## Warning: Removed 81 rows containing missing values (geom_segment).
+
+## Warning: Removed 81 rows containing missing values (geom_segment).
+
+## Warning: Removed 81 rows containing missing values (geom_segment).
+
+## Warning: Removed 81 rows containing missing values (geom_segment).</code></pre>
+<p><img src="/post/2021-01-11_Tidy_Tuesday_2021_02_files/figure-html/unnamed-chunk-2-1.png" width="800" height="800" /></p>
+</div>
