@@ -1,0 +1,174 @@
+---
+title: "5 Tips For Writing Functions in R Packages"
+description: A few tips for improving your workflow
+date: '2021-01-08'
+categories: R
+tags:
+- R
+- programming
+twitterImg: /images/hilarious_r_tools_meme.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>If you write a lot of R code, making packages can be very helpful. You can create a package for internal use to standardize your workflow. If you want to share your package with the R community, you can post it on CRAN or GitHub. Either way, it’s a valuable skill. <a href="https://r-pkgs.org/">Wickham and Bryan’s “R packages”</a> is a good resource to learn more.</p>
+<p>Core to packages are functions. Here’s five tricks I use to make including functions in my packages as easy as possible. This is heavily inspired by the “Building Tidy Tools” workship I attended at rstudio::conf(2020).</p>
+</div>
+<div id="put-related-functions-in-the-same-file" class="section level2">
+<h2>1.) Put Related Functions In The Same File</h2>
+<p>While it’s tempting to write all your code in a single file, like you might in a R script, that’s not always best practice in package development. Any R script in the <code>R/</code> folder gets included in your package, so you can create as many files as you like.</p>
+<p>There’s a nice trick for creating new script files:</p>
+<pre class="r"><code>usethis::use_r(&quot;function_group_1.R&quot;) # will create R/function_group_1.R</code></pre>
+<p>You can use the next tip, to save yourself some typing every time.</p>
+<p>If you must have several functions in the same file, you can take advantage of R’s code indentation to make life easier. You can make your own collapse points with comments in this format.</p>
+<pre class="r"><code># Section Name 1 ####</code></pre>
+<p>Super handy!</p>
+</div>
+<div id="put-usethis-and-devtools-in-your-r-profile" class="section level2">
+<h2>2.) Put usethis and devtools in Your R profile</h2>
+<p>Your R profile is a script that gets run any time you start up R. It’s a great way to set options or load packages that you need in every R session. Here’s what mine looks like:</p>
+<pre class="r"><code>library(devtools)
+library(usethis)</code></pre>
+<p>These two packages are very helpful for package development, so it’s useful to have their functions readily available.</p>
+<p>The location of your R profile may vary, but if you’re in Rstudio you can open it for editing with:</p>
+<pre class="r"><code>usethis::edit_r_profile() </code></pre>
+</div>
+<div id="use-check-often" class="section level2">
+<h2>3.) Use check() often</h2>
+<p>The <code>check()</code> function in <code>devtools</code> will do thorough diagnostics of any R functions in your package. I run this after making any significant changes to a function. Not only will it verify that your package can be installed, it will give informative warnings about the syntax of your code.</p>
+</div>
+<div id="use-shortcuts-for-roxygen" class="section level2">
+<h2>4.) Use Shortcuts for Roxygen</h2>
+<p><a href="https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html">Roxygen</a> is a way of documenting your code with specialized comments. It can be hard for me to remember all the details of Roxygen, so I always insert a Roxygen skeleton (Ctrl + Alt + Shift + R) in Rstudio.</p>
+<p>Here’s a function:</p>
+<pre class="r"><code>dist &lt;- function(x, y) {
+    abs(y - x)
+}</code></pre>
+<p>Here’s what it looks like once you add the skeleton:</p>
+<pre class="r"><code>#&#39; Title
+#&#39;
+#&#39; @param x 
+#&#39; @param y 
+#&#39;
+#&#39; @return
+#&#39; @export
+#&#39;
+#&#39; @examples
+dist &lt;- function(x, y) {
+    abs(y - x)
+}</code></pre>
+<p>Here’s what it looks like filled out:</p>
+<pre class="r"><code>#&#39; Distance Function
+#&#39;
+#&#39; @param x a numeric vector
+#&#39; @param y another numeric vector
+#&#39;
+#&#39; @return manhattan distance between x and y
+#&#39; @export
+#&#39;
+#&#39; @examples
+#&#39; x &lt;- 1:3
+#&#39; y &lt;- c(1,0,4)
+#&#39; dist(x, y)
+dist &lt;- function(x, y) {
+    abs(y - x)
+}</code></pre>
+<p>Once you’ve filled out your Roxygen skeleton, you can update your documentation with the <code>document</code> function from <code>devtools</code>:</p>
+<pre class="r"><code>document()</code></pre>
+<p>This will let you know if your roxygen comments have any issues and update your package documentation behind the scenes.</p>
+</div>
+<div id="use-packagefunction-syntax-early-on" class="section level2">
+<h2>5.) Use package::function Syntax Early On</h2>
+<p>The preferred way to use external functions in your package is to use the <code>package::function</code> syntax like so:</p>
+<pre class="r"><code>#&#39; Lapply with a progress bar
+#&#39;
+#&#39; This is just lapply with \link[progress]{progress_bar}
+#&#39;
+#&#39; @param X List to be iterated over
+#&#39; @param f Function to apply to X
+#&#39; @param ... Additional arguments to `f`
+#&#39;
+#&#39; @return `lapply(X, f, ...)`, progress bar output is printed
+#&#39; @export
+plapply &lt;- function(X, f, ...) {
+    n &lt;- length(X)
+    pb &lt;- progress::progress_bar$new(format = &quot;[:bar]&quot;,
+                                     total = n, width = 100, show_after = 0.1)
+    lapply(1:n, function(j) {
+        y &lt;- X[[j]]
+        pb$tick()
+        f(y, ...)
+    })
+}</code></pre>
+<p>And then update your <code>DESCRIPTION</code> file by calling <code>use_package("name")</code>, so in this case:</p>
+<pre class="r"><code>use_package(&quot;progress&quot;)</code></pre>
+<p>If you’re using external functions, start using the package::function syntax as early as possible. Even if you’re writing a function that you don’t plan on using immediately using the package, it’ll make it much easier to incorporate down the line. It’s a lot more work to go package and add all the package names to the function after the fact.</p>
+<p>It may sound like a lot of first, but once you get used to it, you’ll find that it can be helpful to be more intentional about naming your functions. This also avoid helps avoid naming conflicts.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.2 (2020-06-22)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2021-01-11                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  rappdirs      0.3.1   2016-03-28 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reticulate    1.16    2020-05-27 [1] CRAN (R 4.0.2)
+##  rlang         0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.3     2020-06-18 [1] CRAN (R 4.0.2)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr       1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+</div>
