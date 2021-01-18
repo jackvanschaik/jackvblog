@@ -1,5 +1,5 @@
 ---
-title: "Tidy Tuesday 01-19-2021: Transit Cost"
+title: "Tidy Tuesday 01-19-2021: Kenya's Census"
 description: "Tidy Tuesday 2021, Week 3"
 date: 2021-01-18
 categories: ["R"]
