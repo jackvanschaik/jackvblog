@@ -1,0 +1,150 @@
+---
+title: "Tidy Tuesday 01-19-2021: Transit Cost"
+description: "Tidy Tuesday 2021, Week 3"
+date: 2021-01-18
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+For this [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) I want to practice using maps and the [patchwork](https://github.com/thomasp85/patchwork) package.
+
+## Downloading Data
+
+```{r}
+tt <- tidytuesdayR::tt_load(2021, week = 4)
+
+households <- tt$households
+crops <- tt$crops
+gender <- tt$gender
+```
+
+I also installed the `rKenyaCensus` package first with
+
+```{r, eval=FALSE}
+remotes::install_github("Shelmith-Kariuki/rKenyaCensus")
+```
+
+I'll be using the shapefile from that package to do plotting
+
+```{r}
+k_shp <- rKenyaCensus::KenyaCounties_SHP
+```
+
+## Tidying Data
+
+```{r}
+library(tidyverse, quietly = TRUE)
+library(magrittr)
+```
+
+First, standardize county names
+
+```{r}
+clean_county <- function(X) {
+    X %>%
+        tolower %>%
+        str_replace_all("[^[:alpha:]]+", "") %>%
+        str_replace_all(fixed("city"), "")
+}
+
+households %<>% mutate(County = clean_county(County))
+crops %<>% mutate(County = clean_county(SubCounty))
+gender %<>% mutate(County = clean_county(County))
+```
+
+Join tables together
+
+```{r}
+library(sf)
+
+k_shp %>%
+    as("sf") %>%
+    select(-Population) %>%
+    mutate(County = clean_county(County)) %>%
+    inner_join(households, by="County") %>%
+    inner_join(gender, by="County") %>%
+    inner_join(crops, by="County") %>%
+    mutate(prop_farming = Farming/NumberOfHouseholds) ->
+    k_data
+```
+
+
+## Create Plots
+
+I'll use some color palettes from `jcolors`.
+
+```{r}
+library(jcolors)
+```
+
+```{r}
+p1 <- ggplot(k_data) + 
+    geom_sf(aes(fill=Population), color="black") + 
+    theme_void() +
+    labs(title = "Population", fill="Individuals") +
+    scale_fill_jcolors_contin("rainbow")
+    #scale_fill_steps(low="white", high="#202547")
+```
+
+```{r}
+p2 <- ggplot(k_data) + 
+    geom_sf(aes(fill=AverageHouseholdSize), color="black") + 
+    theme_void() +
+    labs(title = "Average Household Size", fill="Residents") +
+    scale_fill_jcolors_contin("pal11")
+```
+
+```{r}
+p3 <- ggplot(k_data) + 
+    geom_sf(aes(fill=prop_farming), color="black") + 
+    theme_void() +
+    labs(title = "Proportion of Farming Households", fill="Proportion") +
+    scale_fill_steps(low="white", high="#7A6C5D") + 
+    scale_fill_jcolors_contin("pal3")
+```
+
+Transform the `crops` table to make a heatmap
+
+```{r}
+crops %>%
+    filter(SubCounty != "KENYA") %>%
+    mutate_all(replace_na, 0) %>%
+    pivot_longer(Tea:`Khat (Miraa)`) %>%
+    mutate(prop = value/Farming) %>%
+    mutate(name = str_replace(name, fixed("Khat (Miraa)"), "Khat")) ->
+    crops_long
+
+p4 <- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
+    geom_tile() + theme_minimal() + 
+    scale_fill_jcolors_contin("pal3") + 
+    theme(axis.title = element_blank()) +
+    labs(title = "Farming Proportion by Crop", fill="Proportion")
+```
+
+## Show Plots with Patchwork
+
+```{r}
+library(patchwork)
+
+((p1 / p2 / p3) | p4) + 
+    plot_annotation(
+        caption = "Data from the Kenya Census via rKenyaCensus",
+        title = "County Level Data From the Kenya Census"
+    ) +
+    plot_layout(widths=c(1, 4))
+```
+
+# Session Info
+
+```{r}
+session_info()
+```
+
