@@ -1,0 +1,94 @@
+---
+title: "Estimating Pi With... Pi?"
+description: "Using the digits of pi to generate random numbers"
+date: 2021-01-19
+categories: ["R"]
+tags: ["R", "R markdown"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+In this post, I'll estimate Pi using Pi. 
+
+## A Equation For Pi
+
+The function $y = \sqrt{1-x^2}$ defines a quarter circle with radius 1 in the first quadrant:
+
+```{r, out.height=300, out.width=300}
+x <- (0:100)/100
+y <- sqrt(1 - x^2)
+plot(x, y, type="l", asp=1)
+```
+
+Recall the area of a circle is given by $\pi r^2$ where $r$ is the radius. So the area under the function in the first quadrant should be a quarter of the area of the corresponding circle:
+
+$\frac{\pi}{4} = \int_0^1\sqrt{1-x^2}dx$
+
+Simply rearranging, we have an equation for $\pi$. 
+
+$\pi= 4\int_0^1\sqrt{1-x^2}dx$
+
+## Estimating The Integral
+
+We've now reduced estimating $\pi$ to estimating an integral. We could solve this analytically using calculus, but we want to estimate $\pi$ with $\pi$.
+
+There's all sorts of ways to empirically estimate integrals using rectangles, trapezoids, etc but again, we want to be making use of $\pi$ here. 
+
+To estimate this integral, we'll use [Monte Carlo integration](https://en.wikipedia.org/wiki/Monte_Carlo_integration). This works by randomly sampling points in an area, and calculating the proportion of points that fall within the region we want to integrate. As the number of points increases, the proportion of points within region more closely estimates the proportion of the area occupied by our region. 
+
+So for example, say we randomly pick N points with $x$ in $[0, 1]$ and $y$ in $[0, 1]$. Let $M$ be the number of points that fall below the line $\sqrt{1-x^2}dx$. Then we have that
+
+$\int_0^1\sqrt{1-x^2}dx \approx \frac{M}{N}$
+
+So we have that
+
+$\pi \approx 4\frac{M}{N}$
+
+## Doing The Estimation
+
+So we have every piece of the puzzle except the random points. That's where $\pi$ comes in. While the digits of $\pi$ are fixed, and therefore not random, their distribution feels random when a large number of digits are considered. Let's check this out using the first 20,000 digits of $\pi$ from OEIS:
+
+```{r}
+pi <- readr::read_delim("http://oeis.org/A000796/b000796.txt", 
+                        delim = " ", col_names = FALSE)[,2][[1]]
+
+table(pi)
+```
+So it looks like the digits have a seemingly even distribution. We'll use a sliding window to generate 9,998 x-y coordinates for estimating our integral:
+
+```{r}
+N <- 9998
+digit_weight <- 10 ^ -(1:4)
+
+random_numbers <- unlist(lapply(1:(N*2), function(i) {
+    sum(pi[i:(i+3)] * digit_weight)
+}))
+
+hist(random_numbers, breaks = 100)
+```
+
+These are looking pretty random. Finally, let's use them to calculate $\pi$.
+
+```{r}
+est_data <- data.frame(
+    x = random_numbers[1:N],
+    y = random_numbers[(N+1):(2*N)]
+)
+
+M <- sum(est_data$y < sqrt(1 - est_data$x^2))
+
+pi_approx <- 4 * M /N
+```
+
+So here it is:
+
+```{r}
+pi_approx
+```
+So there you have it! A calculation of $\pi$ by using digits of $\pi$ as random points!

@@ -1,0 +1,71 @@
+---
+title: "Estimating Pi With... Pi?"
+description: "Using the digits of pi to generate random numbers"
+date: 2021-01-19
+categories: ["R"]
+tags: ["R", "R markdown"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>In this post, I’ll estimate Pi using Pi.</p>
+</div>
+<div id="a-equation-for-pi" class="section level2">
+<h2>A Equation For Pi</h2>
+<p>The function <span class="math inline">\(y = \sqrt{1-x^2}\)</span> defines a quarter circle with radius 1 in the first quadrant:</p>
+<pre class="r"><code>x &lt;- (0:100)/100
+y &lt;- sqrt(1 - x^2)
+plot(x, y, type=&quot;l&quot;, asp=1)</code></pre>
+<p><img src="/post/2021-01-19-Pi_With_Pi_files/figure-html/unnamed-chunk-1-1.png" width="300" height="300" /></p>
+<p>Recall the area of a circle is given by <span class="math inline">\(\pi r^2\)</span> where <span class="math inline">\(r\)</span> is the radius. So the area under the function in the first quadrant should be a quarter of the area of the corresponding circle:</p>
+<p><span class="math inline">\(\frac{\pi}{4} = \int_0^1\sqrt{1-x^2}dx\)</span></p>
+<p>Simply rearranging, we have an equation for <span class="math inline">\(\pi\)</span>.</p>
+<p><span class="math inline">\(\pi= 4\int_0^1\sqrt{1-x^2}dx\)</span></p>
+</div>
+<div id="estimating-the-integral" class="section level2">
+<h2>Estimating The Integral</h2>
+<p>We’ve now reduced estimating <span class="math inline">\(\pi\)</span> to estimating an integral. We could solve this analytically using calculus, but we want to estimate <span class="math inline">\(\pi\)</span> with <span class="math inline">\(\pi\)</span>.</p>
+<p>There’s all sorts of ways to empirically estimate integrals using rectangles, trapezoids, etc but again, we want to be making use of <span class="math inline">\(\pi\)</span> here.</p>
+<p>To estimate this integral, we’ll use <a href="https://en.wikipedia.org/wiki/Monte_Carlo_integration">Monte Carlo integration</a>. This works by randomly sampling points in an area, and calculating the proportion of points that fall within the region we want to integrate. As the number of points increases, the proportion of points within region more closely estimates the proportion of the area occupied by our region.</p>
+<p>So for example, say we randomly pick N points with <span class="math inline">\(x\)</span> in <span class="math inline">\([0, 1]\)</span> and <span class="math inline">\(y\)</span> in <span class="math inline">\([0, 1]\)</span>. Let <span class="math inline">\(M\)</span> be the number of points that fall below the line <span class="math inline">\(\sqrt{1-x^2}dx\)</span>. Then we have that</p>
+<p><span class="math inline">\(\int_0^1\sqrt{1-x^2}dx \approx \frac{M}{N}\)</span></p>
+<p>So we have that</p>
+<p><span class="math inline">\(\pi \approx 4\frac{M}{N}\)</span></p>
+</div>
+<div id="doing-the-estimation" class="section level2">
+<h2>Doing The Estimation</h2>
+<p>So we have every piece of the puzzle except the random points. That’s where <span class="math inline">\(\pi\)</span> comes in. While the digits of <span class="math inline">\(\pi\)</span> are fixed, and therefore not random, their distribution feels random when a large number of digits are considered. Let’s check this out using the first 20,000 digits of <span class="math inline">\(\pi\)</span> from OEIS:</p>
+<pre class="r"><code>pi &lt;- readr::read_delim(&quot;http://oeis.org/A000796/b000796.txt&quot;, 
+                        delim = &quot; &quot;, col_names = FALSE)[,2][[1]]
+
+table(pi)</code></pre>
+<pre><code>## pi
+##    0    1    2    3    4    5    6    7    8    9 
+## 1954 1997 1986 1987 2043 2082 2017 1953 1961 2020</code></pre>
+<p>So it looks like the digits have a seemingly even distribution. We’ll use a sliding window to generate 9,998 x-y coordinates for estimating our integral:</p>
+<pre class="r"><code>N &lt;- 9998
+digit_weight &lt;- 10 ^ -(1:4)
+
+random_numbers &lt;- unlist(lapply(1:(N*2), function(i) {
+    sum(pi[i:(i+3)] * digit_weight)
+}))
+
+hist(random_numbers, breaks = 100)</code></pre>
+<p><img src="/post/2021-01-19-Pi_With_Pi_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>These are looking pretty random. Finally, let’s use them to calculate <span class="math inline">\(\pi\)</span>.</p>
+<pre class="r"><code>est_data &lt;- data.frame(
+    x = random_numbers[1:N],
+    y = random_numbers[(N+1):(2*N)]
+)
+
+M &lt;- sum(est_data$y &lt; sqrt(1 - est_data$x^2))
+
+pi_approx &lt;- 4 * M /N</code></pre>
+<p>So here it is:</p>
+<pre class="r"><code>pi_approx</code></pre>
+<pre><code>## [1] 3.155831</code></pre>
+<p>So there you have it! A calculation of <span class="math inline">\(\pi\)</span> by using digits of <span class="math inline">\(\pi\)</span> as random points!</p>
+</div>
