@@ -54,6 +54,7 @@ network_edgelist &lt;- function(X, directed = TRUE, hyper = FALSE, loops = TRUE,
 </div>
 <div id="a-quick-plot" class="section level2">
 <h2>A Quick Plot</h2>
+<p>Here’s a quick example using <code>ggnetwork</code></p>
 <pre class="r"><code>library(ggnetwork)</code></pre>
 <pre><code>## Warning: package &#39;ggnetwork&#39; was built under R version 4.0.3</code></pre>
 <pre class="r"><code>library(ggplot2)
@@ -74,8 +75,10 @@ data %&gt;%
     geom_edgelabel(aes(label=vertex)) +
     geom_nodelabel() + 
     theme_blank()</code></pre>
-<p><img src="/post/2021-01-20-Edgelist_Wrapper_files/figure-html/unnamed-chunk-2-1.png" width="672" />
-## Session Info</p>
+<p><img src="/post/2021-01-20-Edgelist_Wrapper_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
 <pre class="r"><code>session_info()</code></pre>
 <pre><code>## - Session info ---------------------------------------------------------------
 ##  setting  value                       

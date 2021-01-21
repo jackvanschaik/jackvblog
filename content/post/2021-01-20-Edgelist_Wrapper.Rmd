@@ -60,6 +60,8 @@ network_edgelist <- function(X, directed = TRUE, hyper = FALSE, loops = TRUE,
 
 ## A Quick Plot
 
+Here's a quick example using `ggnetwork`
+
 ```{r}
 library(ggnetwork)
 library(ggplot2)
@@ -81,6 +83,7 @@ data %>%
     geom_nodelabel() + 
     theme_blank()
 ```
+
 ## Session Info
 
 ```{r}
