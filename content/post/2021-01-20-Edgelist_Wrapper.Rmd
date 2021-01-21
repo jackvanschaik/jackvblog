@@ -1,0 +1,89 @@
+---
+title: "A Wrapper For network::network.edgelist"
+description: "This made my life just a bit easier"
+date: 2021-01-20
+categories: ["R"]
+tags: ["R", "R markdown"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+`network` seems to be a fairly widely used R package for networks/graphs. For my use case, the `network` class in the package was a necessary intermediate step for plotting with `ggnetwork`. I needed to construct a network from an edgelist, but the `network.edgelist` function didn't play nice with (possibly duplicated) character edges. Here's a wrapper that helped out a bit:
+
+## The Wrapper Function
+
+The function is for a local package so it has roxygen comments.
+
+```{r}
+#' Create a network from an edgelist
+#'
+#' Wrapper around \link[network]{network.edgelist}. Allows for character edge names, and duplicated edges by default.
+#'
+#' @param X A data.frame. First column is sending edges. Second column is receiving edges. All other columns are edge attributes.
+#' @param directed See \link[network]{network.edgelist}
+#' @param hyper See \link[network]{network.edgelist}
+#' @param loops See \link[network]{network.edgelist}
+#' @param multiple See \link[network]{network.edgelist}
+#' @param bipartite See \link[network]{network.edgelist}
+#'
+#' @return A object of class `network`
+#' @export
+network_edgelist <- function(X, directed = TRUE, hyper = FALSE, loops = TRUE,
+                             multiple = TRUE, bipartite  = FALSE) {
+    X <- as.data.frame(X)
+    all_vertices <- sort(unique(c(X[,1], X[,2])))
+    N_vertices <- length(all_vertices)
+
+    X[,1] <- as.numeric(factor(X[,1], levels = all_vertices))
+    X[,2] <- as.numeric(factor(X[,2], levels = all_vertices))
+
+    ni <- network::network.initialize(N_vertices, directed, hyper, loops, multiple, bipartite)
+    Y <- network::network.edgelist(X, ni)
+    network::network.vertex.names(Y) <- all_vertices
+
+    # Set additional edge values if there are any
+    if (ncol(X) > 2) {
+        for (i in 3:ncol(X)) {
+            network::set.edge.value(Y, names(X)[i], X[,i])
+        }
+    }
+
+    Y
+}
+```
+
+## A Quick Plot
+
+```{r}
+library(ggnetwork)
+library(ggplot2)
+library(magrittr)
+
+set.seed(1234)
+data <- data.frame(
+        edge_1 = sample(letters, 20),
+        edge_2 = sample(letters, 20),
+        vertex = sample(c(0,1), 20, replace=TRUE)
+    )
+
+data %>%
+    network_edgelist %>%
+    ggnetwork %>%
+    ggplot(aes(x = x, y = y, xend = xend, yend = yend, label=vertex.names)) +
+    geom_edges(color = "grey50") +
+    geom_edgelabel(aes(label=vertex)) +
+    geom_nodelabel() + 
+    theme_blank()
+```
+## Session Info
+
+```{r}
+session_info()
+```
+
