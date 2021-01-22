@@ -1,0 +1,82 @@
+---
+title: "Genuary 2021: January 21st"
+description: "Recursive Plotting"
+date: 2021-01-21
+categories: ["R"]
+tags: ["R", "R markdown", "Genuary"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+Here is my response to [Genuary 2021's Prompt for January 21st](https://genuary2021.github.io/prompts#jan22). First, I give an minimal example of how to recursively draw with ggplot2 in the way the prompt calls for. Then, I attempt to make something artsy.
+
+
+## How to Follow The Prompt With ggplot
+
+```{r}
+library(ggplot2)
+
+# Create an empty plot
+G <- ggplot() + xlim(0, 1) + ylim(0, 1)
+
+# Add to plot (with global assignment)
+DRAW <- function(x) {
+    G <<- G + geom_vline(xintercept = x)
+}
+
+# Create recursive function with stopping condition
+f <- function(x) {
+    
+    if (x > 0.1) {
+        DRAW(x)
+        f(1 * x / 4)
+        f(2 * x / 4)
+        f(3 * x / 4)
+    }
+    
+}
+
+# Display the plot
+f(1)
+G + theme_minimal()
+```
+
+## My Attempt to Get Artsy
+
+```{r}
+G <- ggplot() + xlim(0, 1) + ylim(0, 1)
+
+DRAW <- function(x) {
+    G <<- G + geom_curve(
+        data = data.frame(x = 0, y = 0, xend = x, yend = x),
+        mapping = aes(x=x, y=y, xend=xend, yend = yend), 
+        curvature = x, size = 1.5) + 
+        geom_curve(
+            data = data.frame(x = 0, y = 0, xend = x, yend = x),
+            mapping = aes(x=x, y=y, xend=xend, yend = yend), 
+            curvature = -x, size = 1.5)
+}
+
+f <- function(x) {
+    
+    if (x > 0.1) {
+        DRAW(x)
+        f(1 * x / 4)
+        f(2 * x / 4)
+        f(3 * x / 4)
+    }
+    
+}
+
+f(1)
+G + theme_void()
+
+
+```
+

@@ -1,0 +1,74 @@
+---
+title: "Genuary 2021: January 21st"
+description: "Recursive Plotting"
+date: 2021-01-21
+categories: ["R"]
+tags: ["R", "R markdown", "Genuary"]
+twitterImg: images/clip.png
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Here is my response to <a href="https://genuary2021.github.io/prompts#jan22">Genuary 2021’s Prompt for January 21st</a>. First, I give an minimal example of how to recursively draw with ggplot2 in the way the prompt calls for. Then, I attempt to make something artsy.</p>
+</div>
+<div id="how-to-follow-the-prompt-with-ggplot" class="section level2">
+<h2>How to Follow The Prompt With ggplot</h2>
+<pre class="r"><code>library(ggplot2)
+
+# Create an empty plot
+G &lt;- ggplot() + xlim(0, 1) + ylim(0, 1)
+
+# Add to plot (with global assignment)
+DRAW &lt;- function(x) {
+    G &lt;&lt;- G + geom_vline(xintercept = x)
+}
+
+# Create recursive function with stopping condition
+f &lt;- function(x) {
+    
+    if (x &gt; 0.1) {
+        DRAW(x)
+        f(1 * x / 4)
+        f(2 * x / 4)
+        f(3 * x / 4)
+    }
+    
+}
+
+# Display the plot
+f(1)
+G + theme_minimal()</code></pre>
+<p><img src="/post/2021-01-21_Genuary_02_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+</div>
+<div id="my-attempt-to-get-artsy" class="section level2">
+<h2>My Attempt to Get Artsy</h2>
+<pre class="r"><code>G &lt;- ggplot() + xlim(0, 1) + ylim(0, 1)
+
+DRAW &lt;- function(x) {
+    G &lt;&lt;- G + geom_curve(
+        data = data.frame(x = 0, y = 0, xend = x, yend = x),
+        mapping = aes(x=x, y=y, xend=xend, yend = yend), 
+        curvature = x, size = 1.5) + 
+        geom_curve(
+            data = data.frame(x = 0, y = 0, xend = x, yend = x),
+            mapping = aes(x=x, y=y, xend=xend, yend = yend), 
+            curvature = -x, size = 1.5)
+}
+
+f &lt;- function(x) {
+    
+    if (x &gt; 0.1) {
+        DRAW(x)
+        f(1 * x / 4)
+        f(2 * x / 4)
+        f(3 * x / 4)
+    }
+    
+}
+
+f(1)
+G + theme_void()</code></pre>
+<p><img src="/post/2021-01-21_Genuary_02_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+</div>
