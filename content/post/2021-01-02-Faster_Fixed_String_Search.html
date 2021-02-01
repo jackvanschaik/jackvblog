@@ -92,10 +92,10 @@ bench::mark(
 <pre><code>## # A tibble: 4 x 6
 ##   expression                    min   median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;               &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 base_r(target, search)      1.5us    1.9us   306800.        0B     0   
-## 2 string_r(target, search)   19.4us   20.6us    47460.   38.99KB     9.49
-## 3 string_i(target, search)    4.4us    4.8us   189615.        0B    19.0 
-## 4 ffts(target, search)        1.3us    2.5us   414606.    2.49KB     0</code></pre>
+## 1 base_r(target, search)      1.5us    1.8us   318622.        0B     0   
+## 2 string_r(target, search)   17.7us   19.6us    43755.   38.99KB     8.75
+## 3 string_i(target, search)    4.5us    4.9us   178997.        0B    17.9 
+## 4 ffts(target, search)        1.3us    2.6us   401291.    2.49KB     0</code></pre>
 <p>So the <code>ffts</code> function is the fastest, with a slight edge on the base <code>grepl</code> function. <code>str_detect</code> is the slowest, as it is essentially a wrapper around the <code>stringi:::C_stri_detect_fixed</code> function, which still doesn’t perform as well as <code>ffts</code>.</p>
 <p>The advantage of the <code>stringi</code> method is that it is vectorized over a pattern. To be fair to <code>stringi</code>, let’s compare performance when checking multiple targets.</p>
 <pre class="r"><code>bench::mark(
@@ -105,8 +105,8 @@ bench::mark(
 <pre><code>## # A tibble: 2 x 6
 ##   expression                                                             min
 ##   &lt;bch:expr&gt;                                                          &lt;bch:&gt;
-## 1 string_i(&quot;123abc&quot;, letters)                                          6.6us
-## 2 unlist(lapply(letters, ffts, target = &quot;123abc&quot;), use.names = FALSE) 38.2us
+## 1 string_i(&quot;123abc&quot;, letters)                                          6.7us
+## 2 unlist(lapply(letters, ffts, target = &quot;123abc&quot;), use.names = FALSE) 39.2us
 ## # ... with 4 more variables: median &lt;bch:tm&gt;, `itr/sec` &lt;dbl&gt;,
 ## #   mem_alloc &lt;bch:byt&gt;, `gc/sec` &lt;dbl&gt;</code></pre>
 <p>So <code>stringi</code>’s C function is faster here. This is probably because <code>ffts</code> is scanning the string for each search term but <code>stringi</code> isn’t. I’ll probably implement a vectorized version of <code>ffts</code> that only does a single scan. Maybe it will be faster?</p>
@@ -121,7 +121,7 @@ bench::mark(
 <pre class="r"><code>session_info()</code></pre>
 <pre><code>## - Session info ---------------------------------------------------------------
 ##  setting  value                       
-##  version  R version 4.0.2 (2020-06-22)
+##  version  R version 4.0.3 (2020-10-10)
 ##  os       Windows 10 x64              
 ##  system   x86_64, mingw32             
 ##  ui       RTerm                       
@@ -129,7 +129,7 @@ bench::mark(
 ##  collate  English_United States.1252  
 ##  ctype    English_United States.1252  
 ##  tz       America/Indianapolis        
-##  date     2021-01-02                  
+##  date     2021-01-29                  
 ## 
 ## - Packages -------------------------------------------------------------------
 ##  package     * version date       lib source        
@@ -152,10 +152,10 @@ bench::mark(
 ##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
 ##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
 ##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
-##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.2)
+##  lattice       0.20-41 2020-04-02 [2] CRAN (R 4.0.3)
 ##  lifecycle     0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
 ##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
-##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.2)
+##  Matrix        1.2-18  2019-11-27 [2] CRAN (R 4.0.3)
 ##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
 ##  pillar        1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
 ##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
@@ -187,5 +187,5 @@ bench::mark(
 ##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
 ## 
 ## [1] C:/Users/Jack/Documents/R/win-library/4.0
-## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+## [2] C:/Program Files/R/R-4.0.3/library</code></pre>
 </div>

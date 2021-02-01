@@ -44,9 +44,9 @@ households %&lt;&gt;% mutate(County = clean_county(County))
 crops %&lt;&gt;% mutate(County = clean_county(SubCounty))
 gender %&lt;&gt;% mutate(County = clean_county(County))</code></pre>
 <p>Join tables together</p>
-<pre class="r"><code>library(sf)</code></pre>
-<pre><code>## Warning: package &#39;sf&#39; was built under R version 4.0.3</code></pre>
-<pre class="r"><code>k_shp %&gt;%
+<pre class="r"><code>library(sf)
+
+k_shp %&gt;%
     as(&quot;sf&quot;) %&gt;%
     select(-Population) %&gt;%
     mutate(County = clean_county(County)) %&gt;%
@@ -55,13 +55,11 @@ gender %&lt;&gt;% mutate(County = clean_county(County))</code></pre>
     inner_join(crops, by=&quot;County&quot;) %&gt;%
     mutate(prop_farming = Farming/NumberOfHouseholds) -&gt;
     k_data</code></pre>
-<pre><code>## Warning: package &#39;sp&#39; was built under R version 4.0.3</code></pre>
 </div>
 <div id="create-plots" class="section level2">
 <h2>Create Plots</h2>
 <p>I’ll use some color palettes from <code>jcolors</code>.</p>
 <pre class="r"><code>library(jcolors)</code></pre>
-<pre><code>## Warning: package &#39;jcolors&#39; was built under R version 4.0.3</code></pre>
 <pre class="r"><code>p1 &lt;- ggplot(k_data) + 
     geom_sf(aes(fill=Population), color=&quot;black&quot;) + 
     theme_void() +
@@ -96,9 +94,9 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 </div>
 <div id="show-plots-with-patchwork" class="section level2">
 <h2>Show Plots with Patchwork</h2>
-<pre class="r"><code>library(patchwork)</code></pre>
-<pre><code>## Warning: package &#39;patchwork&#39; was built under R version 4.0.3</code></pre>
-<pre class="r"><code>((p1 / p2 / p3) | p4) + 
+<pre class="r"><code>library(patchwork)
+
+((p1 / p2 / p3) | p4) + 
     plot_annotation(
         caption = &quot;Data from the Kenya Census via rKenyaCensus&quot;,
         title = &quot;County Level Data From the Kenya Census&quot;
@@ -111,7 +109,7 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 <pre class="r"><code>session_info()</code></pre>
 <pre><code>## - Session info ---------------------------------------------------------------
 ##  setting  value                       
-##  version  R version 4.0.2 (2020-06-22)
+##  version  R version 4.0.3 (2020-10-10)
 ##  os       Windows 10 x64              
 ##  system   x86_64, mingw32             
 ##  ui       RTerm                       
@@ -119,7 +117,7 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 ##  collate  English_United States.1252  
 ##  ctype    English_United States.1252  
 ##  tz       America/Indianapolis        
-##  date     2021-01-18                  
+##  date     2021-01-29                  
 ## 
 ## - Packages -------------------------------------------------------------------
 ##  package      * version date       lib
@@ -223,7 +221,7 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
-##  CRAN (R 4.0.2)                                
+##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
@@ -252,14 +250,14 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.2)                                
-##  CRAN (R 4.0.2)                                
+##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.0)                                
+##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
-##  CRAN (R 4.0.2)                                
-##  CRAN (R 4.0.2)                                
+##  CRAN (R 4.0.3)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
 ##  CRAN (R 4.0.2)                                
@@ -308,5 +306,5 @@ p4 &lt;- ggplot(crops_long, aes(x=name, y=SubCounty, fill=prop)) +
 ##  CRAN (R 4.0.2)                                
 ## 
 ## [1] C:/Users/Jack/Documents/R/win-library/4.0
-## [2] C:/Program Files/R/R-4.0.2/library</code></pre>
+## [2] C:/Program Files/R/R-4.0.3/library</code></pre>
 </div>
