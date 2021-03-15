@@ -5,7 +5,7 @@ title: About
 
 Hello! I'm Jack VanSchaik. I am a Data Science PhD Student at [IUPUI](https://soic.iupui.edu/), IU's Indianapolis campus.
 
-Some of my research interests are in Natural Language Processing (NLP) and Data Ethics. In particular, I am interested in developing tools for organizing and understanding large amounts of text data. The [NLP work](https://jackvanschaik.github.io/pain_gene_nlp/) I’m doing with [my advisor](https://soic.iupui.edu/people/sunandan-chakraborty/) aims to discover relationships between genes in academic articles about pain. 
+Some of my research interests are in Natural Language Processing (NLP) and Data Ethics. In particular, I am interested in developing tools for organizing and understanding large amounts of text data. Applications to healthcare and medecine are particularly interesting. The [NLP work](https://jackvanschaik.github.io/pain_gene_nlp/) I’m doing with [my advisor](https://soic.iupui.edu/people/sunandan-chakraborty/) aims to discover relationships between genes in academic articles about pain. 
 
 In my undergrad, I studied Math and Statistics at Purdue and worked at [The Center For Global Soundscapes](https://centerforglobalsoundscapes.org/). After graduating, I worked as a Data Analyst at  [The Regenstrief Institute](https://www.regenstrief.org/.
 

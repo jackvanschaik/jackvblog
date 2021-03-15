@@ -1,0 +1,304 @@
+---
+title: "Convergence of The Perceptron Algorithm"
+description: "Exploring the convergence of with linearlly seperable data"
+date: 2021-03-15
+categories: ["R"]
+tags: ["R", "R markdown"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Introduction
+
+The perceptron algorithm is a classification model developed in the 60's by Frank
+Rosenblatt. It is a precursor to the neural network models that dominate machine learning today.
+While rarely used in for modern applications, the perceptron algorithm is still worth examining
+for its educational and historical importance.
+
+## The Model
+
+This section will draw heavily from Pattern Recognition and Machine Learning (2008) by Chrisopher Bishop.
+
+Given a data matrix $\mathbb{x}$ and two class label $y$, the perception model takes the form:
+
+$$y(\mathbb{x}) = f\left(\mathbb{w}^T\phi(\mathbb{x})\right)$$
+Where $\phi$ is a change of basis function, $\mathbb{w}$ is a weight vector of the same length, and $f$ is the step activation function $f(a) = 1, a\geq 0$ and $f(a) = -1$ otherwise. To align with the activation function, the classes of $y$ should be relabelled $-1$ and $1$.
+
+Let's think through a calculation on a single observation. 
+Let's say \mathbb{x} has a data point $x_1 =(3, -3)$. To keep things simple, we can choose
+a $\phi$ that simply introduces an intercept, so $\phi(x_1) = (1, 3, -3)$. Then $w$ may be something like $(-1, 1, 1)$, so $\mathbb{w}^T\phi(\mathbb{x}) = (1)(-1) + (3)(1) + (-3)(1) = -1$. 
+So we have that $y(x_i) = f(-1) = -1$. If the label corresponding to $x_i$ 
+was $-1$, then this would be a correct classification.
+
+## Training the Model
+
+The unknown parameter to estimate in the model is $\mathbb{w}$. Unfourtunately,
+there is not an easy closed form solution for $\mathbb{w}$. 
+A common method for training models without a closed form solution is 
+stochastic gradient descent, which is an iterative process that can be
+applied to find $\mathbb{w}$.
+
+For the perceptron algorithm, stochastic gradient descent looks like this:
+
+1. Give $\mathbb{w}$ initial values. Choose a learning rate $r$.
+2. Calculate  $y(x_i)$ for all observations in $\mathbb{x}$, to get a predicted label.
+3. For each misclassified data point $(x_i, y_i), calculate $r\phi(x_i)y_i$. 
+4. Add all the $r\phi(x_i)y_i$ values to $\mathbb{w}$ to create a new $\mathbb{w}$
+5. Repeat steps 2 - 5 until the misclassification rate is sufficiently small.
+
+The learning rate and initial parameters depend on the problem. A large $r$ value of $1$ may 
+converge quickly but could be unstable, while small $r$ values like $0.00001$ will be more 
+stable but converge slowly. 
+
+If the data is linearly separable (you can draw a straight line/plane between classes), then
+this gradient descent method will always converge to a perfect solution. If the data isn't
+linearly separable, the value for $\mathbb{w}$ will never converge. We'll explore this more below.
+
+## An Example Implementation
+
+Let's generate some data to test the perceptron algorithm. We'll first generate linearly
+separable data so we're guaranteed a solution.
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+
+set.seed(1234)
+
+test_1 <- tibble(
+    x = runif(100),
+    y = runif(100),
+    class = y > x,
+    label = if_else(class == 1, 1, -1),
+    Label = as.factor(label)
+)
+
+ggplot(test_1, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = "100 Data Points Seperated by the line Y = X")
+```
+
+Here's an implementation of the model in R
+
+```{r}
+# The change of basis function.
+# This just provides an intercept, which is advised.
+phi <- function(x) {
+    c(1, x)
+}
+
+# The activation function f
+f <- function(a) {
+    if (a >= 0) {
+        return(1)
+    }
+    else {
+        return(-1)
+    }
+}
+
+# Calculate the perceptron label for a set of data points X
+y <- function(w, phi, X) {
+    apply(w %*% apply(X, 1, phi), 2, f)
+}
+
+# Train the percepton model using stochastic gradient descent
+# We can supply an initial w value, or choose it randomly
+train_model <- function(x, label, phi, w=NA, iter = 10, rate = 0.1, w_size = 3) {
+    if (any(is.na(w))) {
+        w <- rnorm(w_size)    
+    }
+    # Use this to track w at each training step
+    w_list <- list(w)
+    
+    # Iterate through iter number of steps
+    for (i in 1:iter) {
+        Y <- y(w, phi, x)
+        M <- which(Y != label)
+        
+        # stop if all values are classified correctly
+        if (length(M) == 0) {
+            break
+        }
+        
+        # calculate the increments
+        x_sub <- subset(x, Y!= label)
+        y_M <- subset(label, Y!= label)
+
+        x_M <- rate * apply(x_sub, 1, phi)
+        for (i in 1:length(M)) x_M[,i] <- x_M[,i]*y_M[i]
+        sum_updates <- rowSums(x_M)
+        w_new <- sum_updates + w
+        
+        w <- w_new
+        w_list <- c(w_list, list(w))
+    }
+    
+    list(
+        w = w,
+        w_list = w_list,
+        predicted = Y,
+        label = label
+    )
+}
+```
+
+Let's train the model on our fake data:
+
+```{r}
+X <- as.matrix(test_1[,1:2])
+label <- test_1$label
+w <- c(-1, 1, 1)
+
+percept_model <- train_model(X, label, phi, w=w, iter=100, rate=0.1)
+```
+
+Let's check the number of misclassifications:
+
+```{r}
+sum(percept_model$predicted != percept_model$label)
+```
+
+There's none! This is pretty easy to see if we plot out the decision boundary with the data:
+
+```{r}
+w <- percept_model$w
+
+ggplot(test_1, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = "Data with decision boundary after training") +
+    geom_abline(intercept = -w[1]/w[3], slope = -w[2]/w[3])
+```
+
+## Visualizing convergence
+
+#### The Linearly Separable Case
+
+Let's see what the decision boundary looks as the model is trained with different
+values of $r$. For larger values of $r$, this is more unpredictable and unstable,
+but for much smaller values we can see slow, smooth convergence to a solution.
+
+```{r}
+conv_plot <- function(rate, iter) {
+    X <- as.matrix(test_1[,1:2])
+    label <- test_1$label
+    w <- c(-1, 1, 1)
+    
+    L <- train_model(X, label, phi, w, rate = rate, iter = iter)
+    lines <- do.call(rbind, lapply(L$w_list, function(w) {
+        data.frame(intercept = -w[1]/w[3], slope = -w[2]/w[3])
+    }))
+    n_lines <- nrow(lines)
+    colors <- viridis::viridis_pal(direction=-1)(n_lines)
+    alpha <- (1:n_lines)/n_lines
+    
+    ggplot(test_1, aes(x = x, y = y, color = as.factor(label))) + 
+    geom_abline(data = lines, 
+                mapping = aes(slope = slope, intercept = intercept), 
+                color=colors, alpha=alpha)
+}
+```
+
+
+```{r}
+g1 <- conv_plot(0.1, 1000) + theme_void() + theme(legend.position = "none")
+g2 <- conv_plot(0.01, 1000) + theme_void() + theme(legend.position = "none")
+g3 <- conv_plot(0.001, 1000) + theme_void() + theme(legend.position = "none")
+g4 <- conv_plot(0.0001, 10000) + theme_void() + theme(legend.position = "none")
+```
+
+```{r}
+library(patchwork)
+
+(g1 | g2) / (g3 | g4) + plot_annotation(
+    title = 'Convergence of the Percepton Algorithm on Linearly Seperable Data',
+    subtitle = 'Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4',
+    caption = 'Jack VanSchaik | @VanSchaikJack | web.jackx.xyz'
+)
+```
+
+#### Not Linearly Separable Case
+
+Let's see what happens on data that can't be cleanly separated by a straight line. First let's generate some test data with clear overlap:
+
+```{r}
+set.seed(4321)
+
+test_2 <- tibble(
+    x = c(rbeta(50, 2, 4), rbeta(50, 4, 2)),
+    y = c(rbeta(50, 4, 2), rbeta(50, 2, 4)),
+    class = c(rep(0, 50), rep(1, 50)),
+    label = if_else(class == 1, 1, -1),
+    Label = as.factor(label)
+)
+
+ggplot(test_2, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = "100 Inseperable Data Points")
+```
+
+Now lets's draw some similar plots to before
+
+```{r}
+conv_plot_2 <- function(rate, iter) {
+    X <- as.matrix(test_2[,1:2])
+    label <- test_2$label
+    w <- c(-1, 1, 1)
+    
+    L <- train_model(X, label, phi, w, rate = rate, iter = iter)
+    lines <- do.call(rbind, lapply(L$w_list, function(w) {
+        data.frame(intercept = -w[1]/w[3], slope = -w[2]/w[3])
+    }))
+    n_lines <- nrow(lines)
+    colors <- viridis::viridis_pal(direction=-1)(n_lines)
+    alpha <- 0.5*(1:n_lines)/n_lines
+    
+    ggplot(test_2, aes(x = x, y = y, color = as.factor(label))) + 
+    geom_abline(data = lines, 
+                mapping = aes(slope = slope, intercept = intercept), 
+                color=colors, alpha=alpha)
+}
+```
+
+
+```{r}
+g5 <- conv_plot_2(0.1, 1000) + theme_void() + theme(legend.position = "none")
+g6 <- conv_plot_2(0.01, 1000) + theme_void() + theme(legend.position = "none")
+g7 <- conv_plot_2(0.001, 1000) + theme_void() + theme(legend.position = "none")
+g8 <- conv_plot_2(0.0001, 10000) + theme_void() + theme(legend.position = "none")
+```
+
+Notice how the final model with $r = 0.0001$ doesn't converge
+
+```{r}
+library(patchwork)
+
+(g5 | g6) / (g7 | g8) + plot_annotation(
+    title = 'Convergence of the Percepton Algorithm on Linearly Inseperable Data',
+    subtitle = 'Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4',
+    caption = 'Jack VanSchaik | @VanschaikJack | web.jackx.xyz'
+)
+```
+
+#### Creating An Extra Plot
+
+Let's combine the two sets of plots to make something pretty.
+
+```{r}
+(g1 | g2 | g3 | g4) / (g5 | g6 | g7 | g8) + plot_annotation(
+    title = 'Convergence of the Percepton Algorithm on Linearly Seperable/Inseperable Data',
+    subtitle = 'Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4',
+    caption = 'Jack VanSchaik | @VanschaikJack | web.jackx.xyz'
+)
+```
+
+
+## Thanks for reading!!
+
+```{r}
+devtools::session_info()
+```
+

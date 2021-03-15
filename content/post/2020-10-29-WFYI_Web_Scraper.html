@@ -8,6 +8,7 @@ tags: ["R Markdown", "R"]
 twitterImg: /images/pete.png
 ---
 
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
 <script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
 <script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
 <link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
@@ -84,6 +85,6 @@ wfyi_scrape &lt;- function(q) {
 # Print in a nice data table and limit contents to 100 character
 DT::datatable(mutate(results, content=paste0(substr(content, 1, 100), &quot;...&quot;)))</code></pre>
 <div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5"],["2020-03-02","2019-07-08","2019-02-10","2018-06-15","2019-11-05"],["Former South Bend Mayor Pete Buttigieg is suspending his campaign for president.Justin Hicks/IPB New...","South Bend Mayor Pete Buttigieg gives an update to the common council on his administration's effort...","South Bend Mayor Pete Buttigieg talks to WNDU's Maureen McFadden at a launch event for his new book ...","In a Saturday, Feb. 25, 2017 photo, South Bend Mayor Pete Buttigieg addresses the Democratic Nationa...","James Mueller hugs a supporter at Corby's Irish Pub after winning the South Bend mayoral election.Ph..."]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>date<\/th>\n      <th>content<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[[],[],[]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>date<\/th>\n      <th>content<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>
 <p>Happy scraping!</p>
 </div>

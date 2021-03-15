@@ -1,0 +1,350 @@
+---
+title: "Convergence of The Perceptron Algorithm"
+description: "Exploring the convergence of with linearlly seperable data"
+date: 2021-03-15
+categories: ["R"]
+tags: ["R", "R markdown"]
+twitterImg: images/clip.png
+---
+
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The perceptron algorithm is a classification model developed in the 60’s by Frank
+Rosenblatt. It is a precursor to the neural network models that dominate machine learning today.
+While rarely used in for modern applications, the perceptron algorithm is still worth examining
+for its educational and historical importance.</p>
+</div>
+<div id="the-model" class="section level2">
+<h2>The Model</h2>
+<p>This section will draw heavily from Pattern Recognition and Machine Learning (2008) by Chrisopher Bishop.</p>
+<p>Given a data matrix <span class="math inline">\(\mathbb{x}\)</span> and two class label <span class="math inline">\(y\)</span>, the perception model takes the form:</p>
+<p><span class="math display">\[y(\mathbb{x}) = f\left(\mathbb{w}^T\phi(\mathbb{x})\right)\]</span>
+Where <span class="math inline">\(\phi\)</span> is a change of basis function, <span class="math inline">\(\mathbb{w}\)</span> is a weight vector of the same length, and <span class="math inline">\(f\)</span> is the step activation function <span class="math inline">\(f(a) = 1, a\geq 0\)</span> and <span class="math inline">\(f(a) = -1\)</span> otherwise. To align with the activation function, the classes of <span class="math inline">\(y\)</span> should be relabelled <span class="math inline">\(-1\)</span> and <span class="math inline">\(1\)</span>.</p>
+<p>Let’s think through a calculation on a single observation.
+Let’s say  has a data point <span class="math inline">\(x_1 =(3, -3)\)</span>. To keep things simple, we can choose
+a <span class="math inline">\(\phi\)</span> that simply introduces an intercept, so <span class="math inline">\(\phi(x_1) = (1, 3, -3)\)</span>. Then <span class="math inline">\(w\)</span> may be something like <span class="math inline">\((-1, 1, 1)\)</span>, so <span class="math inline">\(\mathbb{w}^T\phi(\mathbb{x}) = (1)(-1) + (3)(1) + (-3)(1) = -1\)</span>.
+So we have that <span class="math inline">\(y(x_i) = f(-1) = -1\)</span>. If the label corresponding to <span class="math inline">\(x_i\)</span>
+was <span class="math inline">\(-1\)</span>, then this would be a correct classification.</p>
+</div>
+<div id="training-the-model" class="section level2">
+<h2>Training the Model</h2>
+<p>The unknown parameter to estimate in the model is <span class="math inline">\(\mathbb{w}\)</span>. Unfourtunately,
+there is not an easy closed form solution for <span class="math inline">\(\mathbb{w}\)</span>.
+A common method for training models without a closed form solution is
+stochastic gradient descent, which is an iterative process that can be
+applied to find <span class="math inline">\(\mathbb{w}\)</span>.</p>
+<p>For the perceptron algorithm, stochastic gradient descent looks like this:</p>
+<ol style="list-style-type: decimal">
+<li>Give <span class="math inline">\(\mathbb{w}\)</span> initial values. Choose a learning rate <span class="math inline">\(r\)</span>.</li>
+<li>Calculate <span class="math inline">\(y(x_i)\)</span> for all observations in <span class="math inline">\(\mathbb{x}\)</span>, to get a predicted label.</li>
+<li>For each misclassified data point $(x_i, y_i), calculate <span class="math inline">\(r\phi(x_i)y_i\)</span>.</li>
+<li>Add all the <span class="math inline">\(r\phi(x_i)y_i\)</span> values to <span class="math inline">\(\mathbb{w}\)</span> to create a new <span class="math inline">\(\mathbb{w}\)</span></li>
+<li>Repeat steps 2 - 5 until the misclassification rate is sufficiently small.</li>
+</ol>
+<p>The learning rate and initial parameters depend on the problem. A large <span class="math inline">\(r\)</span> value of <span class="math inline">\(1\)</span> may
+converge quickly but could be unstable, while small <span class="math inline">\(r\)</span> values like <span class="math inline">\(0.00001\)</span> will be more
+stable but converge slowly.</p>
+<p>If the data is linearly separable (you can draw a straight line/plane between classes), then
+this gradient descent method will always converge to a perfect solution. If the data isn’t
+linearly separable, the value for <span class="math inline">\(\mathbb{w}\)</span> will never converge. We’ll explore this more below.</p>
+</div>
+<div id="an-example-implementation" class="section level2">
+<h2>An Example Implementation</h2>
+<p>Let’s generate some data to test the perceptron algorithm. We’ll first generate linearly
+separable data so we’re guaranteed a solution.</p>
+<pre class="r"><code>suppressPackageStartupMessages(library(tidyverse))
+
+set.seed(1234)
+
+test_1 &lt;- tibble(
+    x = runif(100),
+    y = runif(100),
+    class = y &gt; x,
+    label = if_else(class == 1, 1, -1),
+    Label = as.factor(label)
+)
+
+ggplot(test_1, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = &quot;100 Data Points Seperated by the line Y = X&quot;)</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>Here’s an implementation of the model in R</p>
+<pre class="r"><code># The change of basis function.
+# This just provides an intercept, which is advised.
+phi &lt;- function(x) {
+    c(1, x)
+}
+
+# The activation function f
+f &lt;- function(a) {
+    if (a &gt;= 0) {
+        return(1)
+    }
+    else {
+        return(-1)
+    }
+}
+
+# Calculate the perceptron label for a set of data points X
+y &lt;- function(w, phi, X) {
+    apply(w %*% apply(X, 1, phi), 2, f)
+}
+
+# Train the percepton model using stochastic gradient descent
+# We can supply an initial w value, or choose it randomly
+train_model &lt;- function(x, label, phi, w=NA, iter = 10, rate = 0.1, w_size = 3) {
+    if (any(is.na(w))) {
+        w &lt;- rnorm(w_size)    
+    }
+    # Use this to track w at each training step
+    w_list &lt;- list(w)
+    
+    # Iterate through iter number of steps
+    for (i in 1:iter) {
+        Y &lt;- y(w, phi, x)
+        M &lt;- which(Y != label)
+        
+        # stop if all values are classified correctly
+        if (length(M) == 0) {
+            break
+        }
+        
+        # calculate the increments
+        x_sub &lt;- subset(x, Y!= label)
+        y_M &lt;- subset(label, Y!= label)
+
+        x_M &lt;- rate * apply(x_sub, 1, phi)
+        for (i in 1:length(M)) x_M[,i] &lt;- x_M[,i]*y_M[i]
+        sum_updates &lt;- rowSums(x_M)
+        w_new &lt;- sum_updates + w
+        
+        w &lt;- w_new
+        w_list &lt;- c(w_list, list(w))
+    }
+    
+    list(
+        w = w,
+        w_list = w_list,
+        predicted = Y,
+        label = label
+    )
+}</code></pre>
+<p>Let’s train the model on our fake data:</p>
+<pre class="r"><code>X &lt;- as.matrix(test_1[,1:2])
+label &lt;- test_1$label
+w &lt;- c(-1, 1, 1)
+
+percept_model &lt;- train_model(X, label, phi, w=w, iter=100, rate=0.1)</code></pre>
+<p>Let’s check the number of misclassifications:</p>
+<pre class="r"><code>sum(percept_model$predicted != percept_model$label)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<p>There’s none! This is pretty easy to see if we plot out the decision boundary with the data:</p>
+<pre class="r"><code>w &lt;- percept_model$w
+
+ggplot(test_1, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = &quot;Data with decision boundary after training&quot;) +
+    geom_abline(intercept = -w[1]/w[3], slope = -w[2]/w[3])</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+<div id="visualizing-convergence" class="section level2">
+<h2>Visualizing convergence</h2>
+<div id="the-linearly-separable-case" class="section level4">
+<h4>The Linearly Separable Case</h4>
+<p>Let’s see what the decision boundary looks as the model is trained with different
+values of <span class="math inline">\(r\)</span>. For larger values of <span class="math inline">\(r\)</span>, this is more unpredictable and unstable,
+but for much smaller values we can see slow, smooth convergence to a solution.</p>
+<pre class="r"><code>conv_plot &lt;- function(rate, iter) {
+    X &lt;- as.matrix(test_1[,1:2])
+    label &lt;- test_1$label
+    w &lt;- c(-1, 1, 1)
+    
+    L &lt;- train_model(X, label, phi, w, rate = rate, iter = iter)
+    lines &lt;- do.call(rbind, lapply(L$w_list, function(w) {
+        data.frame(intercept = -w[1]/w[3], slope = -w[2]/w[3])
+    }))
+    n_lines &lt;- nrow(lines)
+    colors &lt;- viridis::viridis_pal(direction=-1)(n_lines)
+    alpha &lt;- (1:n_lines)/n_lines
+    
+    ggplot(test_1, aes(x = x, y = y, color = as.factor(label))) + 
+    geom_abline(data = lines, 
+                mapping = aes(slope = slope, intercept = intercept), 
+                color=colors, alpha=alpha)
+}</code></pre>
+<pre class="r"><code>g1 &lt;- conv_plot(0.1, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g2 &lt;- conv_plot(0.01, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g3 &lt;- conv_plot(0.001, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g4 &lt;- conv_plot(0.0001, 10000) + theme_void() + theme(legend.position = &quot;none&quot;)</code></pre>
+<pre class="r"><code>library(patchwork)
+
+(g1 | g2) / (g3 | g4) + plot_annotation(
+    title = &#39;Convergence of the Percepton Algorithm on Linearly Seperable Data&#39;,
+    subtitle = &#39;Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4&#39;,
+    caption = &#39;Jack VanSchaik | @VanSchaikJack | web.jackx.xyz&#39;
+)</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+<div id="not-linearly-separable-case" class="section level4">
+<h4>Not Linearly Separable Case</h4>
+<p>Let’s see what happens on data that can’t be cleanly separated by a straight line. First let’s generate some test data with clear overlap:</p>
+<pre class="r"><code>set.seed(4321)
+
+test_2 &lt;- tibble(
+    x = c(rbeta(50, 2, 4), rbeta(50, 4, 2)),
+    y = c(rbeta(50, 4, 2), rbeta(50, 2, 4)),
+    class = c(rep(0, 50), rep(1, 50)),
+    label = if_else(class == 1, 1, -1),
+    Label = as.factor(label)
+)
+
+ggplot(test_2, aes(x = x, y = y, color = Label)) + 
+    geom_point() +
+    labs(title = &quot;100 Inseperable Data Points&quot;)</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Now lets’s draw some similar plots to before</p>
+<pre class="r"><code>conv_plot_2 &lt;- function(rate, iter) {
+    X &lt;- as.matrix(test_2[,1:2])
+    label &lt;- test_2$label
+    w &lt;- c(-1, 1, 1)
+    
+    L &lt;- train_model(X, label, phi, w, rate = rate, iter = iter)
+    lines &lt;- do.call(rbind, lapply(L$w_list, function(w) {
+        data.frame(intercept = -w[1]/w[3], slope = -w[2]/w[3])
+    }))
+    n_lines &lt;- nrow(lines)
+    colors &lt;- viridis::viridis_pal(direction=-1)(n_lines)
+    alpha &lt;- 0.5*(1:n_lines)/n_lines
+    
+    ggplot(test_2, aes(x = x, y = y, color = as.factor(label))) + 
+    geom_abline(data = lines, 
+                mapping = aes(slope = slope, intercept = intercept), 
+                color=colors, alpha=alpha)
+}</code></pre>
+<pre class="r"><code>g5 &lt;- conv_plot_2(0.1, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g6 &lt;- conv_plot_2(0.01, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g7 &lt;- conv_plot_2(0.001, 1000) + theme_void() + theme(legend.position = &quot;none&quot;)
+g8 &lt;- conv_plot_2(0.0001, 10000) + theme_void() + theme(legend.position = &quot;none&quot;)</code></pre>
+<p>Notice how the final model with <span class="math inline">\(r = 0.0001\)</span> doesn’t converge</p>
+<pre class="r"><code>library(patchwork)
+
+(g5 | g6) / (g7 | g8) + plot_annotation(
+    title = &#39;Convergence of the Percepton Algorithm on Linearly Inseperable Data&#39;,
+    subtitle = &#39;Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4&#39;,
+    caption = &#39;Jack VanSchaik | @VanschaikJack | web.jackx.xyz&#39;
+)</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+</div>
+<div id="creating-an-extra-plot" class="section level4">
+<h4>Creating An Extra Plot</h4>
+<p>Let’s combine the two sets of plots to make something pretty.</p>
+<pre class="r"><code>(g1 | g2 | g3 | g4) / (g5 | g6 | g7 | g8) + plot_annotation(
+    title = &#39;Convergence of the Percepton Algorithm on Linearly Seperable/Inseperable Data&#39;,
+    subtitle = &#39;Learning rate parameters of 10^-1, 10^-2, 10^-3, 10^-4&#39;,
+    caption = &#39;Jack VanSchaik | @VanschaikJack | web.jackx.xyz&#39;
+)</code></pre>
+<p><img src="/post/2021-03-15-Perceptron_Convergence_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+</div>
+</div>
+<div id="thanks-for-reading" class="section level2">
+<h2>Thanks for reading!!</h2>
+<pre class="r"><code>devtools::session_info()</code></pre>
+<pre><code>## - Session info ---------------------------------------------------------------
+##  setting  value                       
+##  version  R version 4.0.3 (2020-10-10)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RTerm                       
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/Indianapolis        
+##  date     2021-03-15                  
+## 
+## - Packages -------------------------------------------------------------------
+##  package     * version date       lib source        
+##  assertthat    0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
+##  backports     1.1.7   2020-05-13 [1] CRAN (R 4.0.0)
+##  blob          1.2.1   2020-01-20 [1] CRAN (R 4.0.2)
+##  blogdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  bookdown      0.20    2020-06-23 [1] CRAN (R 4.0.2)
+##  broom         0.7.0   2020-07-09 [1] CRAN (R 4.0.2)
+##  callr         3.4.3   2020-03-28 [1] CRAN (R 4.0.2)
+##  cellranger    1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
+##  cli           2.0.2   2020-02-28 [1] CRAN (R 4.0.2)
+##  colorspace    1.4-1   2019-03-18 [1] CRAN (R 4.0.2)
+##  crayon        1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
+##  DBI           1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
+##  dbplyr        1.4.4   2020-05-27 [1] CRAN (R 4.0.2)
+##  desc          1.2.0   2018-05-01 [1] CRAN (R 4.0.2)
+##  devtools    * 2.3.1   2020-07-21 [1] CRAN (R 4.0.2)
+##  digest        0.6.25  2020-02-23 [1] CRAN (R 4.0.2)
+##  dplyr       * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
+##  ellipsis      0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
+##  evaluate      0.14    2019-05-28 [1] CRAN (R 4.0.2)
+##  fansi         0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
+##  farver        2.0.3   2020-01-16 [1] CRAN (R 4.0.2)
+##  forcats     * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
+##  fs            1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
+##  generics      0.0.2   2018-11-29 [1] CRAN (R 4.0.2)
+##  ggplot2     * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
+##  glue          1.4.1   2020-05-13 [1] CRAN (R 4.0.2)
+##  gridExtra     2.3     2017-09-09 [1] CRAN (R 4.0.2)
+##  gtable        0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
+##  haven         2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
+##  hms           0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
+##  htmltools     0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  httr          1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
+##  jsonlite      1.7.0   2020-06-25 [1] CRAN (R 4.0.2)
+##  knitr         1.29    2020-06-23 [1] CRAN (R 4.0.2)
+##  labeling      0.3     2014-08-23 [1] CRAN (R 4.0.0)
+##  lifecycle     0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
+##  lubridate     1.7.9   2020-06-08 [1] CRAN (R 4.0.2)
+##  magrittr      1.5     2014-11-22 [1] CRAN (R 4.0.2)
+##  memoise       1.1.0   2017-04-21 [1] CRAN (R 4.0.2)
+##  modelr        0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
+##  munsell       0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
+##  patchwork   * 1.1.1   2020-12-17 [1] CRAN (R 4.0.3)
+##  pillar        1.4.6   2020-07-10 [1] CRAN (R 4.0.2)
+##  pkgbuild      1.1.0   2020-07-13 [1] CRAN (R 4.0.2)
+##  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
+##  pkgload       1.1.0   2020-05-29 [1] CRAN (R 4.0.2)
+##  prettyunits   1.1.1   2020-01-24 [1] CRAN (R 4.0.2)
+##  processx      3.4.3   2020-07-05 [1] CRAN (R 4.0.2)
+##  ps            1.3.3   2020-05-08 [1] CRAN (R 4.0.2)
+##  purrr       * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
+##  R6            2.4.1   2019-11-12 [1] CRAN (R 4.0.2)
+##  Rcpp          1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
+##  readr       * 1.3.1   2018-12-21 [1] CRAN (R 4.0.2)
+##  readxl        1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
+##  remotes       2.2.0   2020-07-21 [1] CRAN (R 4.0.2)
+##  reprex        0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
+##  rlang         0.4.7   2020-07-09 [1] CRAN (R 4.0.2)
+##  rmarkdown     2.6     2020-12-14 [1] CRAN (R 4.0.3)
+##  rprojroot     1.3-2   2018-01-03 [1] CRAN (R 4.0.2)
+##  rstudioapi    0.11    2020-02-07 [1] CRAN (R 4.0.2)
+##  rvest         0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
+##  scales        1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
+##  sessioninfo   1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
+##  stringi       1.4.6   2020-02-17 [1] CRAN (R 4.0.0)
+##  stringr     * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
+##  testthat      2.3.2   2020-03-02 [1] CRAN (R 4.0.2)
+##  tibble      * 3.0.3   2020-07-10 [1] CRAN (R 4.0.2)
+##  tidyr       * 1.1.1   2020-07-31 [1] CRAN (R 4.0.2)
+##  tidyselect    1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
+##  tidyverse   * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
+##  usethis     * 1.6.1   2020-04-29 [1] CRAN (R 4.0.2)
+##  vctrs         0.3.2   2020-07-15 [1] CRAN (R 4.0.2)
+##  viridis       0.5.1   2018-03-29 [1] CRAN (R 4.0.3)
+##  viridisLite   0.3.0   2018-02-01 [1] CRAN (R 4.0.2)
+##  withr         2.2.0   2020-04-20 [1] CRAN (R 4.0.2)
+##  xfun          0.16    2020-07-24 [1] CRAN (R 4.0.2)
+##  xml2          1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
+##  yaml          2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+## 
+## [1] C:/Users/Jack/Documents/R/win-library/4.0
+## [2] C:/Program Files/R/R-4.0.3/library</code></pre>
+</div>

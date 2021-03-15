@@ -34,7 +34,7 @@ Here are just a few examples that come to mind:
 
 ### Programming and Coding
 
-I've been programming for a while. I first taught myself Visual Basic for a 7th grade science fair project and remember learning Python when the community was awaiting the release 3.0. As a rapscallion hacker in high school, I learned Javascript & HTML, PHP, SQL, Java, some strokes of C++ and even a little assembly. Moving to undergrad, I decided to use my powers for good. I wrote my first line of R in a Big Data Analysis course and have used it almost every day since. As a data science PhD student, R and Python are the tools I used day to day. Javascript holds a very special place in my heart and keep C++ in the holster for when I need a little speed boost.
+I've been programming for a while. I first taught myself Visual Basic for a 7th grade science fair project and remember learning Python when the community was awaiting the release 3.0. As young coder in high school, I learned Javascript & HTML, PHP, SQL, Java, some strokes of C++ and even a little assembly. Moving to undergrad, I wrote my first line of R in a Big Data Analysis course and have used it almost every day since. As a data science PhD student, R and Python are the tools I used day to day. Javascript holds a very special place in my heart and keep C++ in the tuck for when I need a little speed boost.
 
 * R. See next section.
 * Python. Used for current research and coursework.
