@@ -1,0 +1,70 @@
+---
+title: "Tidy Tuesday 03-16-2021: Video Games"
+description: "Tidy Tuesday 2021, Week 12"
+date: 2021-03-16
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(dev.args = list(png = list(type = "cairo")))
+```
+
+## Load The Data
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2021-03-16')
+games <- tuesdata$games
+```
+
+## Tidy
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+library(lubridate)
+library(tsibble)
+
+games %>%
+    filter(gamename == "Kerbal Space Program") %>%
+    transmute(
+        gamename,
+        date = yearmonth(ymd(paste(year, month, "1"))),
+        avg, peak
+    ) ->
+    ksp
+```
+
+## Plot
+
+```{r}
+library(ggpubr)
+library(ggdark)
+library(extrafont)
+library(grid)
+
+bg <- png::readPNG("C:/Users/Jack/Pictures/space.png")
+jeb <- png::readPNG("C:/Users/Jack/Pictures/jeb.png")
+jeb_g <- rasterGrob(jeb)
+
+ggplot(ksp, aes(x=date, y=avg)) + 
+    background_image(bg) + 
+    geom_line(color="#a02c30", size = 2, alpha=1) +
+    labs(title = "Average Kerbal Space Program Players on Steam Over Time",
+         subtitle = "The rocket building and simulation game has maintained a solid base of players",
+         caption = "Plot by @VanschaikJack | Data From michau96 on Kaggle | KSP Art By Squad",
+         x = "Month", y = "Average Number of Players") +
+    dark_theme_grey(base_size = 14, base_family = "Corbel") +
+    theme(
+        plot.background = element_rect(fill = "#060715"),
+        axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+        plot.caption = element_text(size = 8, colour = "#786b6b"),
+        plot.subtitle = element_text(size = 12, colour = "#786b6b")
+    ) +
+    annotation_custom(jeb_g, xmin=18500, xmax=Inf, ymin=1900, ymax=Inf)
+    
+    
+```
+

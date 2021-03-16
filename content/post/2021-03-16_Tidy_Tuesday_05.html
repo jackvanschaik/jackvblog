@@ -1,0 +1,65 @@
+---
+title: "Tidy Tuesday 03-16-2021: Video Games"
+description: "Tidy Tuesday 2021, Week 12"
+date: 2021-03-16
+categories: ["R"]
+tags: ["R", "R markdown", "Tidy Tuesday", "Tidyverse"]
+twitterImg: images/clip.png
+---
+
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+
+
+<div id="load-the-data" class="section level2">
+<h2>Load The Data</h2>
+<pre class="r"><code>tuesdata &lt;- tidytuesdayR::tt_load(&#39;2021-03-16&#39;)</code></pre>
+<pre><code>## 
+##  Downloading file 1 of 1: `games.csv`</code></pre>
+<pre class="r"><code>games &lt;- tuesdata$games</code></pre>
+</div>
+<div id="tidy" class="section level2">
+<h2>Tidy</h2>
+<pre class="r"><code>suppressPackageStartupMessages(library(tidyverse))</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.0.4</code></pre>
+<pre class="r"><code>library(lubridate)
+library(tsibble)</code></pre>
+<pre><code>## Warning: package &#39;tsibble&#39; was built under R version 4.0.4</code></pre>
+<pre class="r"><code>games %&gt;%
+    filter(gamename == &quot;Kerbal Space Program&quot;) %&gt;%
+    transmute(
+        gamename,
+        date = yearmonth(ymd(paste(year, month, &quot;1&quot;))),
+        avg, peak
+    ) -&gt;
+    ksp</code></pre>
+</div>
+<div id="plot" class="section level2">
+<h2>Plot</h2>
+<pre class="r"><code>library(ggpubr)</code></pre>
+<pre><code>## Warning: package &#39;ggpubr&#39; was built under R version 4.0.4</code></pre>
+<pre class="r"><code>library(ggdark)</code></pre>
+<pre><code>## Warning: package &#39;ggdark&#39; was built under R version 4.0.4</code></pre>
+<pre class="r"><code>library(extrafont)
+library(grid)
+
+bg &lt;- png::readPNG(&quot;C:/Users/Jack/Pictures/space.png&quot;)
+jeb &lt;- png::readPNG(&quot;C:/Users/Jack/Pictures/jeb.png&quot;)
+jeb_g &lt;- rasterGrob(jeb)
+
+ggplot(ksp, aes(x=date, y=avg)) + 
+    background_image(bg) + 
+    geom_line(color=&quot;#a02c30&quot;, size = 2, alpha=1) +
+    labs(title = &quot;Average Kerbal Space Program Players on Steam Over Time&quot;,
+         subtitle = &quot;The rocket building and simulation game has maintained a solid base of players&quot;,
+         caption = &quot;Plot by @VanschaikJack | Data From michau96 on Kaggle | KSP Art By Squad&quot;,
+         x = &quot;Month&quot;, y = &quot;Average Number of Players&quot;) +
+    dark_theme_grey(base_size = 14, base_family = &quot;Corbel&quot;) +
+    theme(
+        plot.background = element_rect(fill = &quot;#060715&quot;),
+        axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+        plot.caption = element_text(size = 8, colour = &quot;#786b6b&quot;),
+        plot.subtitle = element_text(size = 12, colour = &quot;#786b6b&quot;)
+    ) +
+    annotation_custom(jeb_g, xmin=18500, xmax=Inf, ymin=1900, ymax=Inf)</code></pre>
+<p><img src="/post/2021-03-16_Tidy_Tuesday_05_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+</div>
